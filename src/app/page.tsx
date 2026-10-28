@@ -63,6 +63,8 @@ const DEMO_DATA: AdendaData = {
   plazoOriginalDias: 180,
   diasAmpliacion: 45,
   fechaVtoNueva: "2024-12-26",
+  montoAumentos: 15000000,
+  montoDisminuciones: 2500000,
   montoVariacion: 12500000,
   variacionesAnteriores: [
     {
@@ -190,6 +192,8 @@ const INITIAL_DATA: AdendaData = {
   plazoOriginalDias: 0,
   diasAmpliacion: 0,
   fechaVtoNueva: "",
+  montoAumentos: 0,
+  montoDisminuciones: 0,
   montoVariacion: 0,
   variacionesAnteriores: [],
   incluyeItemsNuevos: true,

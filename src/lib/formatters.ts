@@ -1,5 +1,3 @@
-import { NumerosALetras } from "numero-a-letras";
-
 /**
  * Formatea un número como moneda en Pesos Argentinos (ARS) con formato "$ 1.234.567,89"
  */
@@ -20,9 +18,171 @@ export function formatearMoneda(monto: number | null | undefined): string {
 }
 
 /**
- * Convierte un monto a letras en mayúsculas usando `numero-a-letras`
- * Ej: 1500000 -> "PESOS UN MILLÓN QUINIENTOS MIL CON 00/100" (con conPrefijoPesos = true)
- * o "UN MILLÓN QUINIENTOS MIL CON 00/100" (con conPrefijoPesos = false, útil para plantillas que ya incluyen 'PESOS')
+ * Convierte un número de 1 a 3 dígitos (0 a 999) a letras en español
+ */
+function convertirTerna(num: number, apocopar: boolean = true): string {
+  const UNIDADES = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+  const ESPECIALES = [
+    "DIEZ",
+    "ONCE",
+    "DOCE",
+    "TRECE",
+    "CATORCE",
+    "QUINCE",
+    "DIECISÉIS",
+    "DIECISIETE",
+    "DIECIOCHO",
+    "DIECINUEVE",
+  ];
+  const DECENAS = [
+    "",
+    "",
+    "VEINTE",
+    "TREINTA",
+    "CUARENTA",
+    "CINCUENTA",
+    "SESENTA",
+    "SETENTA",
+    "OCHENTA",
+    "NOVENTA",
+  ];
+  const CENTENAS = [
+    "",
+    "CIENTO",
+    "DOSCIENTOS",
+    "TRESCIENTOS",
+    "CUATROCIENTOS",
+    "QUINIENTOS",
+    "SEISCIENTOS",
+    "SETECIENTOS",
+    "OCHOCIENTOS",
+    "NOVECIENTOS",
+  ];
+
+  if (num === 0) return "";
+  if (num === 100) return "CIEN";
+
+  const c = Math.floor(num / 100);
+  const d = Math.floor((num % 100) / 10);
+  const u = num % 10;
+  let res = "";
+
+  if (c > 0) {
+    res += CENTENAS[c] + " ";
+  }
+
+  if (d === 1) {
+    res += ESPECIALES[u];
+  } else if (d === 2) {
+    if (u === 0) res += "VEINTE";
+    else if (u === 1) res += apocopar ? "VEINTIÚN" : "VEINTIUNO";
+    else if (u === 2) res += "VEINTIDÓS";
+    else if (u === 3) res += "VEINTITRÉS";
+    else if (u === 4) res += "VEINTICUATRO";
+    else if (u === 5) res += "VEINTICINCO";
+    else if (u === 6) res += "VEINTISÉIS";
+    else if (u === 7) res += "VEINTISIETE";
+    else if (u === 8) res += "VEINTIOCHO";
+    else if (u === 9) res += "VEINTINUEVE";
+  } else if (d > 2) {
+    res += DECENAS[d];
+    if (u === 1) {
+      res += " Y " + (apocopar ? "UN" : "UNO");
+    } else if (u > 1) {
+      res += " Y " + UNIDADES[u];
+    }
+  } else {
+    // d === 0
+    if (u === 1) {
+      res += apocopar ? "UN" : "UNO";
+    } else if (u > 1) {
+      res += UNIDADES[u];
+    }
+  }
+
+  return res.trim();
+}
+
+/**
+ * Convierte un número de hasta 6 dígitos (0 a 999.999) a letras en español
+ */
+function convertirHastaSeisDigitos(num: number, apoc: boolean): string {
+  const miles = Math.floor(num / 1000);
+  const resto = num % 1000;
+  let s = "";
+
+  if (miles === 1) {
+    s = "MIL";
+  } else if (miles > 1) {
+    s = convertirTerna(miles, true) + " MIL";
+  }
+
+  if (resto > 0) {
+    const restoStr = convertirTerna(resto, apoc);
+    s = s ? s + " " + restoStr : restoStr;
+  }
+
+  return s.trim();
+}
+const BIGINT_ZERO = BigInt(0);
+const BIGINT_MILLON = BigInt(1000000);
+const BIGINT_BILLON = BigInt("1000000000000");
+
+/**
+ * Convierte un número entero positivo (BigInt o number) a palabras en mayúsculas en español
+ * Soporta escala completa sin desbordamiento mediante BigInt.
+ * Regla estricta de redacción para miles de millones:
+ * - Si el bloque de miles de millones es 1 => "MIL MILLONES" (nunca "UN MIL MILLONES")
+ * - Si es 2 o más => "[CARDINAL] MIL MILLONES" (ej. "DOS MIL MILLONES")
+ */
+export function enteroALetras(n: bigint | number, apocoparFinal: boolean = true): string {
+  const big = typeof n === "bigint" ? (n < BIGINT_ZERO ? -n : n) : BigInt(Math.floor(Math.abs(Number(n))));
+  if (big === BIGINT_ZERO) return "CERO";
+
+  const billones = big / BIGINT_BILLON;
+  const remBillones = big % BIGINT_BILLON;
+  const millones = remBillones / BIGINT_MILLON;
+  const unidades = Number(remBillones % BIGINT_MILLON);
+
+  const partes: string[] = [];
+
+  // 1. Billones (10^12)
+  if (billones > BIGINT_ZERO) {
+    const numBillones = Number(billones);
+    if (numBillones === 1) {
+      partes.push("UN BILLÓN");
+    } else {
+      partes.push(convertirHastaSeisDigitos(numBillones, true) + " BILLONES");
+    }
+  }
+
+  // 2. Millones y Miles de Millones (10^6 a 10^11)
+  if (millones > BIGINT_ZERO) {
+    const numMillones = Number(millones);
+    if (numMillones === 1) {
+      partes.push("UN MILLÓN");
+    } else {
+      // Regla estricta de miles de millones:
+      // Si miles de millones es 1 => "MIL" + resto + " MILLONES" (ej. 1904 => "MIL NOVECIENTOS CUATRO MILLONES")
+      // Si miles de millones >= 2 => "[X] MIL" + resto + " MILLONES" (ej. 2900 => "DOS MIL NOVECIENTOS MILLONES")
+      partes.push(convertirHastaSeisDigitos(numMillones, true) + " MILLONES");
+    }
+  }
+
+  // 3. Unidades y Miles (10^0 a 10^5)
+  if (unidades > 0) {
+    partes.push(convertirHastaSeisDigitos(unidades, apocoparFinal));
+  }
+
+  return partes.join(" ").trim();
+}
+
+/**
+ * Convierte un monto numérico a letras en mayúsculas en Pesos Argentinos con centavos
+ * Ejemplos:
+ * - 1904566260.00 -> "PESOS MIL NOVECIENTOS CUATRO MILLONES QUINIENTOS SESENTA Y SEIS MIL DOSCIENTOS SESENTA CON 00/100"
+ * - 2900000000.00 -> "PESOS DOS MIL NOVECIENTOS MILLONES CON 00/100"
+ * - 12500000.00   -> "PESOS DOCE MILLONES QUINIENTOS MIL CON 00/100"
  */
 export function montoALetras(
   monto: number | null | undefined,
@@ -33,33 +193,19 @@ export function montoALetras(
   }
 
   const num = Math.abs(Number(monto));
-  const raw = NumerosALetras(num);
+  const parts = num.toFixed(2).split(".");
+  const enteroBig = BigInt(parts[0]);
+  const centavos = parts[1] || "00";
 
-  const centavosMatch = raw.match(/(\d{2})\/100/);
-  const centavos = centavosMatch ? centavosMatch[1] : "00";
-
-  let letras = raw
-    .replace(/\s+Pesos?.*$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Corrección para "Millón de" seguido de otros números (ej: "Un Millón de Quinientos" -> "Un Millón Quinientos")
-  letras = letras.replace(/Mill(ón|ones) de (?=[A-Za-z])/gi, "Mill$1 ");
-  // Corrección si termina en " de" (ej: "Un Millón de" -> "Un Millón")
-  letras = letras.replace(/\s+de$/i, "");
-
-  const prefix = conPrefijoPesos
-    ? Math.floor(num) === 1
-      ? "PESO "
-      : "PESOS "
-    : "";
+  const letras = enteroALetras(enteroBig, true);
+  const prefix = conPrefijoPesos ? "PESOS " : "";
 
   return `${prefix}${letras} CON ${centavos}/100`.toUpperCase().replace(/\s+/g, " ").trim();
 }
 
 /**
  * Convierte un número entero a días en letras en mayúsculas
- * Ej: 30 -> "TREINTA", 180 -> "CIENTO OCHENTA", 1 -> "UN"
+ * Ej: 30 -> "TREINTA", 180 -> "CIENTO OCHENTA", 1 -> "UN", 21 -> "VEINTIÚN"
  */
 export function diasALetras(dias: number | null | undefined): string {
   if (dias === null || dias === undefined || isNaN(dias)) {
@@ -70,16 +216,7 @@ export function diasALetras(dias: number | null | undefined): string {
   if (num === 0) return "CERO";
   if (num === 1) return "UN";
 
-  const raw = NumerosALetras(num);
-  let letras = raw
-    .replace(/\s+Pesos?.*$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  letras = letras.replace(/Mill(ón|ones) de (?=[A-Za-z])/gi, "Mill$1 ");
-  letras = letras.replace(/\s+de$/i, "");
-
-  return letras.toUpperCase().replace(/\s+/g, " ").trim();
+  return enteroALetras(BigInt(num), true).toUpperCase().replace(/\s+/g, " ").trim();
 }
 
 /**

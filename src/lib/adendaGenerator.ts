@@ -269,7 +269,9 @@ export interface AdendaData {
   // Variación Actual Solicitada
   diasAmpliacion?: number;
   fechaVtoNueva?: string;
-  montoVariacion?: number;
+  montoAumentos?: number; // Monto de Aumentos (+)
+  montoDisminuciones?: number; // Monto de Disminuciones (-)
+  montoVariacion?: number; // Monto de Variación / Ampliación Contractual (Neto = Aumentos - Disminuciones)
 
   // Nuevas opciones condicionales y comunicaciones
   incluyeItemsNuevos?: boolean;
@@ -691,13 +693,23 @@ export function calcularValoresAdenda(data: AdendaData) {
   );
 
   // 3. Modificaciones de la Variación Actual a Tramitar
-  const montoVar = incluyeMonto ? Math.abs(Number(data.montoVariacion) || 0) : 0;
   const diasAmp = incluyePlazo ? Number(data.diasAmpliacion) || 0 : 0;
 
-  const modifMas = incluyeMonto && !esDisminucion ? montoVar : 0;
-  const modifMenos = incluyeMonto && esDisminucion ? montoVar : 0;
+  let modifMas = 0;
+  let modifMenos = 0;
 
-  // Var de Vol ($) = Modif (+) - Modif (-)
+  if (incluyeMonto) {
+    if (data.montoAumentos !== undefined || data.montoDisminuciones !== undefined) {
+      modifMas = Math.max(0, Number(data.montoAumentos) || 0);
+      modifMenos = Math.max(0, Number(data.montoDisminuciones) || 0);
+    } else {
+      const montoVar = Math.abs(Number(data.montoVariacion) || 0);
+      modifMas = !esDisminucion ? montoVar : 0;
+      modifMenos = esDisminucion ? montoVar : 0;
+    }
+  }
+
+  // Var de Vol ($) = Modif (+) - Modif (-) = Aumentos - Disminuciones
   const varVolPesos = modifMas - modifMenos;
 
   // Var de Vol (%) = Var de Vol ($) / Monto Actualizado Previo
@@ -770,9 +782,33 @@ export function calcularValoresAdenda(data: AdendaData) {
 }
 
 /**
- * Prepara el objeto de variables para inyectar en docx-templates
+ * Redacción estándar del considerando de alteración según técnica legislativa:
+ * "Que la alteración contractual implica aumentos por un total de $[MONTO_AUMENTOS] ([AUMENTOS_EN_LETRAS]) y disminuciones por un total de $[MONTO_DISMINUCIONES] ([DISMINUCIONES_EN_LETRAS]), resultando una ampliación contractual neta de $[MONTO_NETO] ([NETO_EN_LETRAS])."
  */
-export function prepararDatosReporte(data: AdendaData) {
+export function generarConsiderandoAlteracionMontos(
+  aumentos: number,
+  disminuciones: number,
+  neto: number
+): string {
+  const aumMoneda = formatearMoneda(aumentos);
+  const aumLetras = montoALetras(aumentos, false);
+  const dismMoneda = formatearMoneda(disminuciones);
+  const dismLetras = montoALetras(disminuciones, false);
+  const netoMoneda = formatearMoneda(Math.abs(neto));
+  const netoLetras = montoALetras(Math.abs(neto), false);
+
+  return `Que la alteración contractual implica aumentos por un total de ${aumMoneda} (${aumLetras}) y disminuciones por un total de ${dismMoneda} (${dismLetras}), resultando una ampliación contractual neta de ${netoMoneda} (${netoLetras});`;
+}
+
+/**
+ * Prepara el objeto de variables para inyectar en docx-templates.
+ * Asignación diferenciada según plantilla (Adenda vs Norma Legal):
+ * - Adenda (esNorma = false):
+ *   Consigna únicamente el monto neto (montoNetoAmpliacion, montoNetoAmpliacionLetras, Var_, Dism_, Aumento_).
+ * - Norma Legal (esNorma = true):
+ *   Consigna discriminadamente aumentos, disminuciones y neto resultante.
+ */
+export function prepararDatosReporte(data: AdendaData, esNorma: boolean = false) {
   const calc = calcularValoresAdenda(data);
 
   const normaAdjCompleta =
@@ -789,6 +825,32 @@ export function prepararDatosReporte(data: AdendaData) {
     ensamblarExpediente(data.expedienteNumero, data.expedienteAnio) ||
     data.expediente ||
     "";
+
+  // Montos discriminados y netos
+  const montoNeto = Math.abs(calc.varVolPesos);
+  const montoNetoMoneda = formatearMoneda(montoNeto);
+  const montoNetoLetras = montoALetras(montoNeto, false);
+
+  const aumentoMoneda = formatearMoneda(calc.modifMas);
+  const aumentoLetras = montoALetras(calc.modifMas, false);
+
+  const disminucionMoneda = formatearMoneda(calc.modifMenos);
+  const disminucionLetras = montoALetras(calc.modifMenos, false);
+
+  const textoAlteracionMontos = generarConsiderandoAlteracionMontos(
+    calc.modifMas,
+    calc.modifMenos,
+    calc.varVolPesos
+  );
+
+  // En Adendas: únicamente el monto neto
+  // En Normas: discriminadamente Aumentos, Disminuciones y Neto
+  const varTagMoneda = montoNetoMoneda;
+  const varTagLetras = montoNetoLetras;
+  const aumentoTagMoneda = esNorma ? aumentoMoneda : montoNetoMoneda;
+  const aumentoTagLetras = esNorma ? aumentoLetras : montoNetoLetras;
+  const dismTagMoneda = esNorma ? disminucionMoneda : montoNetoMoneda;
+  const dismTagLetras = esNorma ? disminucionLetras : montoNetoLetras;
 
   return {
     // Obra y Partes
@@ -815,14 +877,26 @@ export function prepararDatosReporte(data: AdendaData) {
     Alcance: data.alcance || "0",
     Nro_Cuadro: data.nroCuadro || "",
 
-    // Variaciones calculadas (se definen todas las variantes para soportar todas las plantillas)
-    Var_: formatearMoneda(Math.abs(calc.varVolPesos)),
-    Var_L: montoALetras(Math.abs(calc.varVolPesos), false),
-    Dism_: formatearMoneda(Math.abs(calc.varVolPesos)),
-    Dism_L: montoALetras(Math.abs(calc.varVolPesos), false),
-    Aumento_: formatearMoneda(Math.abs(calc.varVolPesos)),
-    Aumento_L: montoALetras(Math.abs(calc.varVolPesos), false),
+    // Montos diferenciados solicitados (camelCase y descriptivos)
+    montoNetoAmpliacion: montoNetoMoneda,
+    montoNetoAmpliacionLetras: montoNetoLetras,
+    montoAumentos: aumentoMoneda,
+    montoAumentosLetras: aumentoLetras,
+    montoDisminuciones: disminucionMoneda,
+    montoDisminucionesLetras: disminucionLetras,
+
+    // Tags oficiales para plantillas Word
+    Var_: varTagMoneda,
+    Var_L: varTagLetras,
+    Dism_: dismTagMoneda,
+    Dism_L: dismTagLetras,
+    Aumento_: aumentoTagMoneda,
+    Aumento_L: aumentoTagLetras,
     Var_1: formatearPorcentaje(calc.porcentajeVar),
+
+    // Redacción estándar del considerando / artículo
+    textoAlteracionMontos,
+    Considerando_Alteracion_Montos: textoAlteracionMontos,
 
     // Nuevos valores resultantes
     Monto_Nuevo_: formatearMoneda(calc.montoPostVariacion),
@@ -1373,7 +1447,7 @@ export function homogeneizarDocumentoWordXml(docXml: string, esNorma: boolean): 
  */
 export async function generarYDescargarAdenda(data: AdendaData): Promise<Blob> {
   const templateBuffer = await obtenerPlantillaBuffer(data.modalidad, data.tipoAlteracion);
-  const datosReporte = prepararDatosReporte(data);
+  const datosReporte = prepararDatosReporte(data, false);
   const calc = calcularValoresAdenda(data);
 
   // 1. Ejecutamos docx-templates con el delimitador « »

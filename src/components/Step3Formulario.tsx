@@ -50,6 +50,7 @@ import {
   Calendar,
   MessageSquareQuote,
   Loader2,
+  Lock,
 } from "lucide-react";
 
 interface NormaLegalFieldProps {
@@ -1634,96 +1635,211 @@ export default function Step3Formulario({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* CAMPOS DE VOLUMEN / MONTO */}
-            {calc.incluyeMonto && (
-              <>
-                {/* Switch condicional destacado: ÍTEMS NUEVOS */}
-                <div className="md:col-span-2 p-4 rounded-xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-blue-50/40 to-white shadow-xs">
-                  <label className="flex items-start sm:items-center justify-between gap-4 cursor-pointer">
-                    <div className="space-y-1">
-                      <span className="font-bold text-xs text-[#0B1938] flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-[#0038A8] text-white">
-                          Regla de Norma Legal
-                        </span>
-                        <span>
-                          ¿La modificación incluye la incorporación de Ítems Nuevos no previstos en el contrato original?
-                        </span>
-                      </span>
-                      <p className="text-[11px] text-slate-600">
-                        {data.incluyeItemsNuevos ?? true ? (
-                          <span className="text-indigo-900 font-medium">
-                            &bull; <strong>Marcado:</strong> Se incluirá en la norma legal el párrafo oficial de verificación de análisis de precios de la <strong>Dirección de Cómputo y Presupuesto</strong>.
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">
-                            &bull; <strong>Desmarcado:</strong> Se excluye por completo el considerando de la Dirección de Cómputo y Presupuesto de la plantilla.
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={data.incluyeItemsNuevos ?? true}
-                      onChange={(e) =>
-                        onChange({ incluyeItemsNuevos: e.target.checked })
-                      }
-                      className="w-5 h-5 rounded border-slate-300 text-[#0038A8] focus:ring-[#0038A8] shrink-0 cursor-pointer mt-0.5 sm:mt-0"
-                    />
-                  </label>
-                </div>
+            {calc.incluyeMonto && (() => {
+              const valAumento =
+                data.montoAumentos !== undefined
+                  ? Number(data.montoAumentos) || 0
+                  : calc.esDisminucion
+                  ? 0
+                  : Number(data.montoVariacion) || 0;
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#0038A8] mb-1">
-                    N° de Cuadro Comparativo *
-                    {esConvalidacion && (
-                      <span className="ml-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        Sugerido: FINAL
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    value={data.nroCuadro || (esConvalidacion ? "FINAL" : "")}
-                    onChange={(e) => onChange({ nroCuadro: e.target.value })}
-                    placeholder={placeholderNroCuadro}
-                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0038A8] bg-blue-50/30 font-medium"
-                  />
-                  <span className="text-[11px] text-slate-500 mt-0.5 block">
-                    {esConvalidacion
-                      ? "En convalidaciones de obra se registra habitualmente como Cuadro Comparativo FINAL."
-                      : "Identifica el cuadro de modificaciones presupuestarias o ítems."}
-                  </span>
-                </div>
+              const valDisminucion =
+                data.montoDisminuciones !== undefined
+                  ? Number(data.montoDisminuciones) || 0
+                  : calc.esDisminucion
+                  ? Number(data.montoVariacion) || 0
+                  : 0;
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#0038A8] mb-1">
-                    {calc.esDisminucion
-                      ? "Monto de Disminución Contractual *"
-                      : "Monto de Ampliación Contractual *"}
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-slate-400 font-semibold text-sm">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={data.montoVariacion || ""}
-                      onChange={(e) =>
-                        onChange({
-                          montoVariacion: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0.00"
-                      className="w-full pl-8 pr-3.5 py-2 text-sm rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0038A8] bg-blue-50/30 font-medium"
-                    />
+              const montoNeto = valAumento - valDisminucion;
+
+              return (
+                <>
+                  {/* Switch condicional destacado: ÍTEMS NUEVOS */}
+                  <div className="md:col-span-2 p-4 rounded-xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-blue-50/40 to-white shadow-xs">
+                    <label className="flex items-start sm:items-center justify-between gap-4 cursor-pointer">
+                      <div className="space-y-1">
+                        <span className="font-bold text-xs text-[#0B1938] flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-[#0038A8] text-white">
+                            Regla de Norma Legal
+                          </span>
+                          <span>
+                            ¿La modificación incluye la incorporación de Ítems Nuevos no previstos en el contrato original?
+                          </span>
+                        </span>
+                        <p className="text-[11px] text-slate-600">
+                          {data.incluyeItemsNuevos ?? true ? (
+                            <span className="text-indigo-900 font-medium">
+                              &bull; <strong>Marcado:</strong> Se incluirá en la norma legal el párrafo oficial de verificación de análisis de precios de la <strong>Dirección de Cómputo y Presupuesto</strong>.
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">
+                              &bull; <strong>Desmarcado:</strong> Se excluye por completo el considerando de la Dirección de Cómputo y Presupuesto de la plantilla.
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={data.incluyeItemsNuevos ?? true}
+                        onChange={(e) =>
+                          onChange({ incluyeItemsNuevos: e.target.checked })
+                        }
+                        className="w-5 h-5 rounded border-slate-300 text-[#0038A8] focus:ring-[#0038A8] shrink-0 cursor-pointer mt-0.5 sm:mt-0"
+                      />
+                    </label>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1 italic">
-                    {formatearMoneda(data.montoVariacion)} &bull; {montoALetras(data.montoVariacion, true)}
-                  </p>
-                </div>
-              </>
-            )}
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[#0038A8] mb-1">
+                      N° de Cuadro Comparativo *
+                      {esConvalidacion && (
+                        <span className="ml-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                          Sugerido: FINAL
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={data.nroCuadro || (esConvalidacion ? "FINAL" : "")}
+                      onChange={(e) => onChange({ nroCuadro: e.target.value })}
+                      placeholder={placeholderNroCuadro}
+                      className="w-full px-3.5 py-2 text-sm rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0038A8] bg-blue-50/30 font-medium"
+                    />
+                    <span className="text-[11px] text-slate-500 mt-0.5 block">
+                      {esConvalidacion
+                        ? "En convalidaciones de obra se registra habitualmente como Cuadro Comparativo FINAL."
+                        : "Identifica el cuadro de modificaciones presupuestarias o ítems."}
+                    </span>
+                  </div>
+
+                  {/* 1. Monto de Aumentos (+) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-800 mb-1 flex items-center justify-between">
+                      <span>Monto de Aumentos (+) *</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Modif. (+)
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-emerald-600 font-bold text-sm">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={
+                          data.montoAumentos !== undefined
+                            ? data.montoAumentos || ""
+                            : calc.esDisminucion
+                            ? ""
+                            : data.montoVariacion || ""
+                        }
+                        onChange={(e) => {
+                          const aum = parseFloat(e.target.value) || 0;
+                          const dism =
+                            data.montoDisminuciones !== undefined
+                              ? data.montoDisminuciones || 0
+                              : calc.esDisminucion
+                              ? data.montoVariacion || 0
+                              : 0;
+                          const neto = aum - dism;
+                          onChange({
+                            montoAumentos: aum,
+                            montoDisminuciones: dism,
+                            montoVariacion: neto,
+                          });
+                        }}
+                        placeholder="0.00"
+                        className="w-full pl-8 pr-3.5 py-2 text-sm rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-emerald-50/20 font-medium text-slate-800"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 italic">
+                      {formatearMoneda(valAumento)} &bull; {montoALetras(valAumento, true)}
+                    </p>
+                  </div>
+
+                  {/* 2. Monto de Disminuciones (-) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-amber-800 mb-1 flex items-center justify-between">
+                      <span>Monto de Disminuciones (-) *</span>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        Modif. (-)
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-amber-600 font-bold text-sm">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={
+                          data.montoDisminuciones !== undefined
+                            ? data.montoDisminuciones || ""
+                            : calc.esDisminucion
+                            ? data.montoVariacion || ""
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const dism = parseFloat(e.target.value) || 0;
+                          const aum =
+                            data.montoAumentos !== undefined
+                              ? data.montoAumentos || 0
+                              : !calc.esDisminucion
+                              ? data.montoVariacion || 0
+                              : 0;
+                          const neto = aum - dism;
+                          onChange({
+                            montoAumentos: aum,
+                            montoDisminuciones: dism,
+                            montoVariacion: neto,
+                          });
+                        }}
+                        placeholder="0.00"
+                        className="w-full pl-8 pr-3.5 py-2 text-sm rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 bg-amber-50/20 font-medium text-slate-800"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 italic">
+                      {formatearMoneda(valDisminucion)} &bull; {montoALetras(valDisminucion, true)}
+                    </p>
+                  </div>
+
+                  {/* 3. Monto de Ampliación Contractual (Neto) - Solo lectura / cálculo automático */}
+                  <div className="md:col-span-2 p-3.5 rounded-xl border-2 border-blue-200/90 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white shadow-xs">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-[#0B1938]">
+                        Monto de Ampliación Contractual (Neto) *
+                      </label>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#0038A8] bg-blue-100/90 px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-blue-300">
+                        <Lock className="w-3 h-3 text-[#0038A8]" />
+                        Cálculo Automático: Aumentos - Disminuciones
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-sm">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatearMoneda(montoNeto).replace(/^\$?\s*/, "")}
+                        className="w-full pl-8 pr-3.5 py-2 text-sm rounded-xl border border-slate-300 bg-slate-100/90 text-slate-900 font-black cursor-not-allowed select-none focus:outline-none"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1.5 italic font-medium">
+                      {formatearMoneda(montoNeto)} &bull; {montoALetras(Math.abs(montoNeto), true)}
+                      {montoNeto < 0 && (
+                        <span className="ml-1 text-amber-700 font-bold not-italic">
+                          (Disminución Contractual Neta)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* CAMPOS DE PLAZO */}
             {calc.incluyePlazo && (

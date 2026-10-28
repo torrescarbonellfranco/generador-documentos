@@ -13,12 +13,15 @@ import {
   aplicarNegritasDatosClave,
   removerParrafoComputo,
   PARRAFO_COMPUTO_OFICIAL,
+  generarConsiderandoAlteracionMontos,
 } from "./adendaGenerator";
 import {
   TipoNorma,
   determinarTipoNorma,
   obtenerRutaPlantillaNorma,
 } from "./normaRules";
+
+export { generarConsiderandoAlteracionMontos };
 
 /**
  * Articula gramaticalmente una norma legal ("el Decreto...", "la Disposición...", "la Resolución...")
@@ -260,7 +263,7 @@ export async function generarYDescargarNormaLegal(
   // 3. Preparar los datos unificados
   const textoVisto = construirTextoVisto(data);
   const datosReporte = {
-    ...prepararDatosReporte(data),
+    ...prepararDatosReporte(data, true),
     Visto_Completo: textoVisto,
   };
   const calc = calcularValoresAdenda(data);
