@@ -11,8 +11,8 @@ interface AltyProps {
 
 const ALTY_MESSAGES: Record<number, { title: string; text: string }> = {
   0: {
-    title: "¡Bienvenido al Generador de Proyectos!",
-    text: "¡Hola! Soy Alty, tu asistente de contrataciones. Seleccioná el módulo de trabajo que necesitás para comenzar la redacción automática.",
+    title: "¡Bienvenido al SIGAC!",
+    text: "¡Hola! Soy Alty, tu asistente en contrataciones. Seleccioná el módulo de trabajo que necesitás para comenzar la redacción automática o la asistencia del expediente.",
   },
   1: {
     title: "Consejo de Alty para el Paso 1",

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AdendaData,
   TipoAlteracion,
@@ -15,6 +15,8 @@ import HeaderInstitucional from "@/components/HeaderInstitucional";
 import PantallaInicioModulos from "@/components/PantallaInicioModulos";
 import ModalNormaLegal from "@/components/ModalNormaLegal";
 import CaratulaControlModal from "@/components/CaratulaControlModal";
+import ModalAuthProyectos from "@/components/auth/ModalAuthProyectos";
+import { useAuth } from "@/context/AuthContext";
 import AltyAssistant from "@/components/AltyAssistant";
 import Step1TipoAlteracion from "@/components/Step1TipoAlteracion";
 import Step2Modalidad from "@/components/Step2Modalidad";
@@ -201,14 +203,43 @@ const INITIAL_DATA: AdendaData = {
 };
 
 export default function HomePage() {
+  const { isProyectosAuthenticated } = useAuth();
   const [moduloActivo, setModuloActivo] = useState<ModuloActivo>("selector");
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [formData, setFormData] = useState<AdendaData>(INITIAL_DATA);
   const [isModalNormaOpen, setIsModalNormaOpen] = useState<boolean>(false);
   const [isCaratulaOpen, setIsCaratulaOpen] = useState<boolean>(false);
+  const [isAuthProyectosModalOpen, setIsAuthProyectosModalOpen] =
+    useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [successFile, setSuccessFile] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Redireccionar al selector si se pierde la autorización del módulo de proyectos
+  useEffect(() => {
+    if (
+      (moduloActivo === "adenda" || moduloActivo === "norma") &&
+      !isProyectosAuthenticated
+    ) {
+      setModuloActivo("selector");
+      setCurrentStep(1);
+    }
+  }, [moduloActivo, isProyectosAuthenticated]);
+
+  const handleIniciarProyectos = () => {
+    if (isProyectosAuthenticated) {
+      setModuloActivo("adenda");
+      setCurrentStep(1);
+    } else {
+      setIsAuthProyectosModalOpen(true);
+    }
+  };
+
+  const handleSuccessAuthProyectos = () => {
+    setIsAuthProyectosModalOpen(false);
+    setModuloActivo("adenda");
+    setCurrentStep(1);
+  };
 
   const updateFormData = (patch: Partial<AdendaData>) => {
     setFormData((prev) => ({ ...prev, ...patch }));
@@ -318,14 +349,8 @@ export default function HomePage() {
           <div className="space-y-6">
             <AltyAssistant currentStep={0} />
             <PantallaInicioModulos
-              onSelectModuloAdenda={() => {
-                setModuloActivo("adenda");
-                setCurrentStep(1);
-              }}
-              onSelectModuloNorma={() => {
-                setModuloActivo("norma");
-                setCurrentStep(1);
-              }}
+              onSelectModuloAdenda={handleIniciarProyectos}
+              onSelectModuloNorma={handleIniciarProyectos}
             />
           </div>
         )}
@@ -341,7 +366,7 @@ export default function HomePage() {
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0038A8] transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Volver al selector de proyectos
+                Volver al panel principal (SIGAC)
               </button>
 
               <div className="flex items-center gap-3">
@@ -376,8 +401,8 @@ export default function HomePage() {
                   ? currentStep === 1
                     ? "¡Hola! Seleccioná el tipo de alteración para el proyecto de norma legal. Recordá que si es una ampliación de plazo pura, la competencia corresponde por Resolución de Secretaría."
                     : currentStep === 2
-                    ? "Definí si la norma legal aprueba previamente la alteración o convalida actuaciones de una obra ya ejecutada o vencida."
-                    : "Completá los datos de la obra. Evaluaremos automáticamente si la norma a dictar debe ser un Decreto Municipal o una Resolución de Secretaría según la Ley 687."
+                      ? "Definí si la norma legal aprueba previamente la alteración o convalida actuaciones de una obra ya ejecutada o vencida."
+                      : "Completá los datos de la obra. Evaluaremos automáticamente si la norma a dictar debe ser un Decreto Municipal o una Resolución de Secretaría según la Ley 687."
                   : undefined
               }
             />
@@ -444,22 +469,20 @@ export default function HomePage() {
                       key={step.num}
                       type="button"
                       onClick={() => setCurrentStep(step.num)}
-                      className={`flex items-center gap-3.5 p-3 rounded-xl transition-all text-left ${
-                        isActive
-                          ? "bg-blue-50/80 border border-blue-200 ring-2 ring-blue-500/20"
-                          : isPast
+                      className={`flex items-center gap-3.5 p-3 rounded-xl transition-all text-left ${isActive
+                        ? "bg-blue-50/80 border border-blue-200 ring-2 ring-blue-500/20"
+                        : isPast
                           ? "hover:bg-slate-50 cursor-pointer"
                           : "opacity-60 cursor-pointer hover:opacity-90"
-                      }`}
+                        }`}
                     >
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-                          isActive
-                            ? "bg-[#0038A8] text-white shadow-sm shadow-blue-500/30"
-                            : isPast
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${isActive
+                          ? "bg-[#0038A8] text-white shadow-sm shadow-blue-500/30"
+                          : isPast
                             ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-100 text-slate-500"
-                        }`}
+                          }`}
                       >
                         {isPast ? <CheckCircle2 className="w-5 h-5" /> : step.num}
                       </div>
@@ -539,6 +562,13 @@ export default function HomePage() {
         isOpen={isCaratulaOpen}
         onClose={() => setIsCaratulaOpen(false)}
         data={formData}
+      />
+
+      {/* Modal de Seguridad Nivel 2: Autorización para Generación de Proyectos */}
+      <ModalAuthProyectos
+        isOpen={isAuthProyectosModalOpen}
+        onClose={() => setIsAuthProyectosModalOpen(false)}
+        onSuccess={handleSuccessAuthProyectos}
       />
 
       {/* Footer Institucional */}

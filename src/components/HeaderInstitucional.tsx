@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Building, Home, Sparkles } from "lucide-react";
+import { Building, Home, Sparkles, LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface HeaderProps {
   onGoHome?: () => void;
@@ -15,6 +16,7 @@ export default function HeaderInstitucional({
   showHomeButton = false,
   onLoadDemo,
 }: HeaderProps) {
+  const { logout } = useAuth();
   const [imgError, setImgError] = useState(false);
 
   // Logo oficial remoto de Neuquén Capital con fallback local
@@ -38,23 +40,24 @@ export default function HeaderInstitucional({
             <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center p-1 bg-white rounded-xl border border-slate-100 shadow-xs group-hover:border-blue-200 transition-colors">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={logoSrc}
+                src="/neuquen_capital_logo.png"
                 alt="Municipalidad de Neuquén Capital"
                 className="w-full h-full object-contain"
-                onError={() => setImgError(true)}
+                crossOrigin="anonymous"
               />
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-lg sm:text-xl font-extrabold text-[#0B1938] tracking-tight group-hover:text-[#0038A8] transition-colors leading-tight">
-                  Generador de Proyectos
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base sm:text-lg font-extrabold text-[#0B1938] tracking-tight group-hover:text-[#0038A8] transition-colors leading-tight">
+                  Sistema Integral de Gestión de Alteraciones Contractuales (SIGAC)
                 </span>
-                <span className="hidden md:inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0038A8] border border-blue-200">
-                  OBRA PÚBLICA
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0038A8] border border-blue-200 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Área de Alteraciones Contractuales • Sistema Activo
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium truncate max-w-xl">
+              <p className="text-xs text-slate-500 font-medium truncate max-w-2xl">
                 Subsecretaría de Gestión de Contrataciones de Obras Públicas &bull; Municipalidad de Neuquén
               </p>
             </div>
@@ -67,7 +70,7 @@ export default function HeaderInstitucional({
             <button
               type="button"
               onClick={onGoHome}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
               title="Volver a la selección de módulos"
             >
               <Home className="w-3.5 h-3.5 text-slate-600" />
@@ -79,13 +82,24 @@ export default function HeaderInstitucional({
             <button
               type="button"
               onClick={onLoadDemo}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0038A8] border border-blue-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0038A8] border border-blue-200 transition-colors cursor-pointer"
               title="Cargar valores de prueba en el formulario"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#00B4D8]" />
               <span className="hidden sm:inline">Cargar</span> Demo
             </button>
           )}
+
+          {/* Botón sutil de Cerrar sesión (Logout) */}
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 transition-colors border border-slate-200/80 hover:border-rose-200 cursor-pointer"
+            title="Cerrar sesión del portal"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Cerrar sesión</span>
+          </button>
 
           <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-slate-200">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

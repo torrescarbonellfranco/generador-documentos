@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { AdendaData, calcularValoresAdenda } from "@/lib/adendaGenerator";
+import { LOGO_NEUQUEN_BASE64 } from "@/lib/logoBase64";
 import {
   formatearMoneda,
   montoALetras,
@@ -37,15 +38,47 @@ export default function CaratulaControlModal({
     try {
       setIsGeneratingPdf(true);
 
-      // 1. Capturar la carátula en alta definición asegurando captura de toda la altura
+      // Esperar a que las fuentes del documento estén listas
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+
+      // Asegurar que la imagen del logo esté cargada y decodificada antes de capturar
+      const imagenes = elemento.querySelectorAll("img");
+      await Promise.all(
+        Array.from(imagenes).map(async (img) => {
+          if (!img.complete) {
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+          }
+          if (img.decode) {
+            try {
+              await img.decode();
+            } catch {
+              // Continuar si falla decode nativo
+            }
+          }
+        })
+      );
+
+      // 1. Capturar la carátula en alta definición asegurando captura de toda la altura y ancho rígido
       const imgData = await toPng(elemento, {
         quality: 0.98,
         backgroundColor: "#ffffff",
         pixelRatio: 2,
+        cacheBust: true, // Fuerza a descargar y cachear todas las imágenes antes de dibujar el canvas
+        includeQueryParams: true,
+        imagePlaceholder: LOGO_NEUQUEN_BASE64,
         height: elemento.scrollHeight,
+        width: 820,
         style: {
           overflow: "visible",
           maxHeight: "none",
+          width: "820px",
+          minWidth: "820px",
+          maxWidth: "820px",
         },
       });
 
@@ -158,45 +191,49 @@ export default function CaratulaControlModal({
             id="caratula-print"
             className="w-[820px] min-w-[820px] max-w-[820px] mx-auto p-6 bg-white space-y-4 text-slate-900 text-xs shadow-sm print:shadow-none print:w-full print:min-w-0 print:max-w-none print:p-0"
           >
-          {/* Encabezado Oficial con Escudo y Membrete */}
+          {/* Encabezado Oficial con Escudo y Membrete en 3 columnas rígidas */}
           <div className="border-b-2 border-slate-800 pb-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            {/* Columna izquierda: Logo municipal con ancho fijo (w-24 shrink-0) */}
+            <div className="w-24 shrink-0 flex items-center justify-start">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/neuquen_capital_logo.png"
-                alt="Neuquén Capital"
-                className="w-14 h-14 object-contain shrink-0"
+                alt="Logo Municipalidad de Neuquén"
+                className="h-14 w-auto object-contain"
+                crossOrigin="anonymous"
               />
-              <div>
-                <h1 className="font-extrabold text-sm tracking-wide text-slate-900 uppercase">
-                  Municipalidad de Neuquén
-                </h1>
-                <h2 className="font-bold text-[11px] text-slate-700 uppercase">
-                  Secretaría de Infraestructura y Planeamiento Urbano
-                </h2>
-                <h3 className="font-semibold text-[10px] text-slate-600 uppercase">
-                  Subsecretaría de Gestión de Contrataciones de Obras Públicas
-                </h3>
-              </div>
             </div>
 
-            {/* Recuadro Destacado: NO EXTRAER DEL EXPEDIENTE */}
-            <div className="border-2 border-red-700 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-center font-black tracking-wider text-xs shadow-xs shrink-0 uppercase print:border-black print:text-black print:bg-white">
+            {/* Columna central: Texto institucional oficial */}
+            <div className="flex-1 min-w-0 pr-2">
+              <h1 className="font-extrabold text-xs tracking-wider text-slate-900 uppercase leading-snug">
+                Municipalidad de Neuquén
+              </h1>
+              <h2 className="font-bold text-[11px] text-slate-700 uppercase leading-snug">
+                Secretaría de Infraestructura y Planeamiento Urbano
+              </h2>
+              <h3 className="font-semibold text-[10px] text-slate-600 uppercase leading-snug">
+                Subsecretaría de Gestión de Contrataciones de Obras Públicas
+              </h3>
+            </div>
+
+            {/* Columna derecha: Recuadro "NO EXTRAER DEL EXPEDIENTE" con ancho fijo (w-36 shrink-0) */}
+            <div className="w-36 shrink-0 border-2 border-red-700 bg-red-50 text-red-700 px-2 py-2 rounded-lg text-center font-black tracking-wider text-xs shadow-xs uppercase flex items-center justify-center leading-tight print:border-black print:text-black print:bg-white">
               NO EXTRAER DEL EXPEDIENTE
             </div>
           </div>
 
           {/* Expediente de Referencia */}
-          <div className="flex items-center justify-between bg-slate-100 border border-slate-300 px-4 py-2 my-2 rounded-sm text-xs font-bold text-slate-800 print:bg-slate-50">
-            <div className="whitespace-nowrap">
-              <span className="text-slate-500 font-semibold mr-1">EXPEDIENTE N°:</span>
-              <span className="text-[#0038A8] print:text-black">
+          <div className="flex items-center justify-between bg-slate-100 border border-slate-400 px-4 py-2.5 my-2 rounded-sm text-slate-900">
+            <div className="flex items-center space-x-2 whitespace-nowrap">
+              <span className="text-xs font-bold text-slate-600 uppercase">Expediente N°:</span>
+              <span className="text-base font-black tracking-wide text-slate-950">
                 {calc.expedienteCompleto || data.expediente || "OE - -"}
               </span>
             </div>
-            <div className="whitespace-nowrap text-right">
-              <span className="text-slate-500 font-semibold mr-1">ALCANCE:</span>
-              <span className="text-[#0038A8] print:text-black">
+            <div className="flex items-center space-x-2 whitespace-nowrap text-right">
+              <span className="text-xs font-bold text-slate-600 uppercase">Alcance:</span>
+              <span className="text-base font-black tracking-wide text-slate-950">
                 {data.alcance || "0"}
               </span>
             </div>
@@ -204,21 +241,23 @@ export default function CaratulaControlModal({
 
           {/* 1. DATOS PRELIMINARES DEL CONTRATO ORIGINAL */}
           <div className="border border-slate-300 rounded-sm overflow-hidden">
-            <div className="bg-slate-800 text-white px-3 py-1 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
-              <span className="tracking-wide uppercase">1. Datos Preliminares del Contrato Original</span>
+            <div className="bg-slate-800 text-white px-3 py-1.5 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
+              <span className="tracking-wide uppercase truncate flex-1">
+                1. DATOS PRELIMINARES DEL CONTRATO
+              </span>
               <span className="text-[10px] uppercase text-slate-300 font-semibold whitespace-nowrap shrink-0 ml-2 print:text-slate-700">
-                Contratación Base
+                Original
               </span>
             </div>
 
             <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-[11px]">
-              <div className="col-span-2 sm:col-span-3">
-                <span className="text-slate-500 font-semibold block text-[10px] uppercase">
+              <div className="col-span-full border-b border-slate-200 pb-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
                   Obra:
                 </span>
-                <span className="font-bold text-slate-900 uppercase leading-snug">
-                  {data.obra || "-"}
-                </span>
+                <p className="text-sm sm:text-base font-black text-slate-900 leading-snug uppercase">
+                  {data.obra || "—"}
+                </p>
               </div>
 
               <div>
@@ -335,24 +374,42 @@ export default function CaratulaControlModal({
           {/* 2. HISTORIAL DE VARIACIONES ANTERIORES (SI EXISTEN) */}
           {tieneVariacionesPrevias && (
             <div className="border border-slate-300 rounded-sm overflow-hidden">
-              <div className="bg-slate-700 text-white px-3 py-1 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
-                <span className="tracking-wide uppercase">2. Historial de Alteraciones Contractuales Anteriores</span>
+              <div className="bg-slate-800 text-white px-3 py-1.5 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
+                <span className="tracking-wide uppercase truncate flex-1">
+                  2. HISTORIAL DE ALTERACIONES CONTRACTUALES
+                </span>
                 <span className="text-[10px] uppercase text-slate-300 font-semibold whitespace-nowrap shrink-0 ml-2 print:text-slate-700">
-                  Registro Previo
+                  Antecedentes
                 </span>
               </div>
 
               <table className="w-full text-left text-[10px] border-collapse">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase font-bold text-[9px]">
-                    <th className="p-2">Alteración</th>
-                    <th className="p-2">Tipo</th>
-                    <th className="p-2">Expediente - Alcance</th>
-                    <th className="p-2">Norma Legal</th>
-                    <th className="p-2 text-right">Plazo (+)</th>
-                    <th className="p-2 text-right">Modif (+) / (-)</th>
-                    <th className="p-2 text-right">Paraliz.</th>
-                    <th className="p-2 text-right">Vto. Resultante</th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      ALTERACIÓN
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      TIPO
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      EXPEDIENTE / ALCANCE
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      NORMA LEGAL
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      PLAZO (+)
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      MODIF. (+/-)
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      PARALIZ.
+                    </th>
+                    <th className="py-1 px-1 font-bold text-center uppercase tracking-tight whitespace-nowrap">
+                      VTO. RESULTANTE
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-[10px]">
@@ -381,22 +438,22 @@ export default function CaratulaControlModal({
 
                     return (
                       <tr key={v.id || i} className="hover:bg-slate-50">
-                        <td className="p-2 font-bold whitespace-nowrap">
+                        <td className="py-1.5 px-1 font-bold text-center whitespace-nowrap">
                           {v.nroVariacion || `Var ${i + 1}`}
                         </td>
-                        <td className="p-2 text-slate-600 font-medium">
+                        <td className="py-1.5 px-1 text-slate-600 font-medium text-center whitespace-nowrap">
                           {v.tipoAlteracion || "Ampliación de Plazo"}
                         </td>
-                        <td className="p-2 font-mono text-[9px] text-slate-700">
+                        <td className="py-1.5 px-1 font-mono text-[9px] text-slate-700 text-center whitespace-nowrap">
                           {expteDisplay}
                         </td>
-                        <td className="p-2 font-medium">{normaDisplay}</td>
-                        <td className="p-2 text-right font-medium text-blue-900">
+                        <td className="py-1.5 px-1 font-medium text-center whitespace-nowrap">{normaDisplay}</td>
+                        <td className="py-1.5 px-1 text-center font-medium text-blue-900 whitespace-nowrap">
                           {row?.diasAmpliacionEfectivos
                             ? `+${row.diasAmpliacionEfectivos} d`
                             : "-"}
                         </td>
-                        <td className="p-2 text-right font-medium">
+                        <td className="py-1.5 px-1 text-center font-medium whitespace-nowrap">
                           {row?.montoAumentoEfectivo ? (
                             <span className="text-emerald-700">
                               +{formatearMoneda(row.montoAumentoEfectivo)}
@@ -409,12 +466,12 @@ export default function CaratulaControlModal({
                             "-"
                           )}
                         </td>
-                        <td className="p-2 text-right font-medium text-amber-900">
+                        <td className="py-1.5 px-1 text-center font-medium text-amber-900 whitespace-nowrap">
                           {row?.diasParalizacionEfectivos
                             ? `${row.diasParalizacionEfectivos} d`
                             : "-"}
                         </td>
-                        <td className="p-2 text-right font-bold text-[#0038A8] whitespace-nowrap">
+                        <td className="py-1.5 px-1 text-center font-bold text-[#0038A8] whitespace-nowrap">
                           {row?.fechaVtoResultante
                             ? formatearFechaCorta(row.fechaVtoResultante)
                             : "-"}
@@ -429,11 +486,11 @@ export default function CaratulaControlModal({
 
           {/* 3. ESTADO ACTUALIZADO PREVIO A LA PRESENTE VARIACIÓN */}
           <div className="border border-slate-300 rounded-sm overflow-hidden">
-            <div className="bg-slate-800 text-white px-3 py-1 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
-              <span className="tracking-wide uppercase">
+            <div className="bg-slate-800 text-white px-3 py-1.5 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-200 print:text-black">
+              <span className="tracking-wide uppercase truncate flex-1">
                 {tieneVariacionesPrevias
-                  ? "3. Estado Actualizado Previo a la Presente Alteración"
-                  : "2. Estado Previo (Equivale al Contrato Original)"}
+                  ? "3. ESTADO ACTUALIZADO PREVIO"
+                  : "2. ESTADO PREVIO (CONTRATO ORIGINAL)"}
               </span>
               <span className="text-[10px] uppercase text-slate-300 font-semibold whitespace-nowrap shrink-0 ml-2 print:text-slate-700">
                 Línea Base
@@ -470,14 +527,14 @@ export default function CaratulaControlModal({
 
           {/* 4. VARIACIÓN ACTUAL A TRAMITAR (PRESENTE ADENDA) */}
           <div className="border-2 border-[#0038A8] rounded-sm overflow-hidden print:border-black">
-            <div className="bg-[#0038A8] text-white px-3 py-1 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-300 print:text-black">
-              <span className="tracking-wide uppercase">
+            <div className="bg-[#0038A8] text-white px-3 py-1.5 text-xs font-bold flex justify-between items-center rounded-t-sm print:bg-slate-300 print:text-black">
+              <span className="tracking-wide uppercase truncate flex-1">
                 {tieneVariacionesPrevias
-                  ? "4. Variación Actual a Tramitar (Presente Proyecto)"
-                  : "3. Variación Actual a Tramitar (Presente Proyecto)"}
+                  ? "4. VARIACIÓN ACTUAL A TRAMITAR"
+                  : "3. VARIACIÓN ACTUAL A TRAMITAR"}
               </span>
               <span className="text-[10px] uppercase text-blue-200 font-semibold whitespace-nowrap shrink-0 ml-2 print:text-slate-800">
-                {data.modalidad.toUpperCase()}
+                {data.modalidad?.toUpperCase() || "TRAMITACIÓN"}
               </span>
             </div>
 
@@ -601,12 +658,12 @@ export default function CaratulaControlModal({
           </div>
 
           {/* Bloque de Firma Centrado al Pie */}
-          <div className="mt-6 flex justify-center">
-            <div className="w-72 border-t border-slate-700 pt-2 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-800">
+          <div className="mt-14 flex justify-center pb-4">
+            <div className="w-80 border-t-2 border-slate-700 pt-3 text-center">
+              <p className="text-xs font-black uppercase tracking-wider text-slate-800">
                 Área de Alteraciones Contractuales
               </p>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-slate-500 font-medium">
                 Subsecretaría de Gestión de Contrataciones de Obras Públicas
               </p>
             </div>
