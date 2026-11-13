@@ -20,6 +20,7 @@ import {
   Clock,
   Layers,
   MapPin,
+  TrendingUp,
 } from "lucide-react";
 
 export default function RastreadorExpedientesPage() {
@@ -686,7 +687,27 @@ export default function RastreadorExpedientesPage() {
 
                       {/* 8. Estado (11%) */}
                       <td className="py-2.5 px-2 align-middle">
-                        {renderBadgeEstado(item.estadoCalculado)}
+                        <div className="flex items-center justify-between gap-1">
+                          <div>{renderBadgeEstado(item.estadoCalculado)}</div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const expId = item.expediente || item.id;
+                              const query = new URLSearchParams({
+                                obra: item.obra || '',
+                                empresa: item.empresa || '',
+                                montoOriginal: item.montoOriginal || '',
+                                dias: item.diasAmpliacion || '',
+                              });
+                              router.push(`/plan-convalidacion/${encodeURIComponent(expId)}?${query.toString()}`);
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer"
+                            title="Abrir o crear Plan y Curva (Convalidación)"
+                          >
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -832,8 +853,27 @@ export default function RastreadorExpedientesPage() {
                 </div>
               </div>
 
-              {/* Botón de cierre inferior */}
-              <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+              {/* Botón de acciones y cierre inferior */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const expId = expedienteSeleccionado.expediente || expedienteSeleccionado.id;
+                    const query = new URLSearchParams({
+                      obra: expedienteSeleccionado.obra || '',
+                      empresa: expedienteSeleccionado.empresa || '',
+                      montoOriginal: expedienteSeleccionado.montoOriginal || '',
+                      dias: expedienteSeleccionado.diasAmpliacion || '',
+                    });
+                    router.push(`/plan-convalidacion/${encodeURIComponent(expId)}?${query.toString()}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  title="Abrir o crear Plan de Trabajo y Curva de Inversión por Convalidación para este expediente"
+                >
+                  <TrendingUp className="w-4 h-4 text-purple-200" />
+                  <span>Plan y Curva (Convalidación)</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setExpedienteSeleccionado(null)}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   AdendaData,
   TipoAlteracion,
@@ -16,6 +17,7 @@ import PantallaInicioModulos from "@/components/PantallaInicioModulos";
 import ModalNormaLegal from "@/components/ModalNormaLegal";
 import CaratulaControlModal from "@/components/CaratulaControlModal";
 import ModalAuthProyectos from "@/components/auth/ModalAuthProyectos";
+import ModalAuthVerificacion from "@/components/auth/ModalAuthVerificacion";
 import { useAuth } from "@/context/AuthContext";
 import AltyAssistant from "@/components/AltyAssistant";
 import Step1TipoAlteracion from "@/components/Step1TipoAlteracion";
@@ -203,13 +205,16 @@ const INITIAL_DATA: AdendaData = {
 };
 
 export default function HomePage() {
-  const { isProyectosAuthenticated } = useAuth();
+  const router = useRouter();
+  const { isProyectosAuthenticated, isVerificacionAuthenticated } = useAuth();
   const [moduloActivo, setModuloActivo] = useState<ModuloActivo>("selector");
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [formData, setFormData] = useState<AdendaData>(INITIAL_DATA);
   const [isModalNormaOpen, setIsModalNormaOpen] = useState<boolean>(false);
   const [isCaratulaOpen, setIsCaratulaOpen] = useState<boolean>(false);
   const [isAuthProyectosModalOpen, setIsAuthProyectosModalOpen] =
+    useState<boolean>(false);
+  const [isAuthVerificacionModalOpen, setIsAuthVerificacionModalOpen] =
     useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [successFile, setSuccessFile] = useState<string | null>(null);
@@ -239,6 +244,19 @@ export default function HomePage() {
     setIsAuthProyectosModalOpen(false);
     setModuloActivo("adenda");
     setCurrentStep(1);
+  };
+
+  const handleIniciarVerificacion = () => {
+    if (isVerificacionAuthenticated) {
+      router.push("/plan-convalidacion");
+    } else {
+      setIsAuthVerificacionModalOpen(true);
+    }
+  };
+
+  const handleSuccessAuthVerificacion = () => {
+    setIsAuthVerificacionModalOpen(false);
+    router.push("/plan-convalidacion");
   };
 
   const updateFormData = (patch: Partial<AdendaData>) => {
@@ -351,6 +369,7 @@ export default function HomePage() {
             <PantallaInicioModulos
               onSelectModuloAdenda={handleIniciarProyectos}
               onSelectModuloNorma={handleIniciarProyectos}
+              onSelectModuloVerificacion={handleIniciarVerificacion}
             />
           </div>
         )}
@@ -569,6 +588,13 @@ export default function HomePage() {
         isOpen={isAuthProyectosModalOpen}
         onClose={() => setIsAuthProyectosModalOpen(false)}
         onSuccess={handleSuccessAuthProyectos}
+      />
+
+      {/* Modal de Seguridad Nivel 2: Autorización para Verificación de Plan de Trabajo y Curva */}
+      <ModalAuthVerificacion
+        isOpen={isAuthVerificacionModalOpen}
+        onClose={() => setIsAuthVerificacionModalOpen(false)}
+        onSuccess={handleSuccessAuthVerificacion}
       />
 
       {/* Footer Institucional */}

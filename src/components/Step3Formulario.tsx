@@ -51,6 +51,7 @@ import {
   MessageSquareQuote,
   Loader2,
   Lock,
+  TrendingUp,
 } from "lucide-react";
 
 interface NormaLegalFieldProps {
@@ -516,7 +517,18 @@ export default function Step3Formulario({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/plan-convalidacion/${encodeURIComponent(data.expediente || 'nuevo')}?obra=${encodeURIComponent(data.obra || '')}&empresa=${encodeURIComponent(data.empresa || '')}&montoOriginal=${data.montoOriginal || ''}&dias=${data.diasAmpliacion || ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 shadow-xs transition-colors shrink-0"
+            title="Abrir o confeccionar el Plan de Trabajo y Curva por Convalidación para este expediente"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-purple-600" />
+            Plan y Curva (Convalidación)
+          </a>
+
           {onOpenCaratula && (
             <button
               type="button"
