@@ -10,15 +10,17 @@ import {
   Save,
   ArrowLeft,
 } from 'lucide-react';
-import { ObraGeneral, ResultadoConvalidacion, MesConfig } from '@/modules/plan-convalidacion/types/convalidacion';
+import { ObraGeneral, ResultadoConvalidacion, MesConfig, RegimenPlan } from '@/modules/plan-convalidacion/types/convalidacion';
 import { todosLosProyectosDemo, DemoProject } from '@/modules/plan-convalidacion/lib/demoData';
 import { exportarExcelOficial } from '@/modules/plan-convalidacion/lib/excelExport';
+import { exportarExcelOficialAprobacion } from '@/modules/plan-convalidacion/lib/aprobacionExcelExport';
 import { ExportAuditModal } from '@/modules/plan-convalidacion/components/ExportAuditModal';
 
 interface HeaderNavProps {
   obra: ObraGeneral;
   resultado: ResultadoConvalidacion;
   mesesConfig: MesConfig[];
+  regimen?: RegimenPlan;
   onCargarDemo: (demo: DemoProject) => void;
   onResetear: () => void;
   onAbrirVerificacion: () => void;
@@ -33,6 +35,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   obra,
   resultado,
   mesesConfig,
+  regimen = 'convalidacion',
   onCargarDemo,
   onResetear,
   onAbrirVerificacion,
@@ -49,13 +52,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   const ejecutarDescargaExcel = async () => {
     try {
       setExportando(true);
-      const blob = await exportarExcelOficial(obra, resultado, mesesConfig);
+      const blob =
+        regimen === 'aprobacion'
+          ? await exportarExcelOficialAprobacion(obra, resultado, mesesConfig)
+          : await exportarExcelOficial(obra, resultado, mesesConfig);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const cleanName = (obra.expediente || obra.nombre || 'Convalidacion')
+      const cleanName = (obra.expediente || obra.nombre || (regimen === 'aprobacion' ? 'Aprobacion' : 'Convalidacion'))
         .replace(/[^a-zA-Z0-9-_]/g, '_');
-      a.download = `Plan_Trabajo_Curva_${cleanName}.xlsx`;
+      const prefijo = regimen === 'aprobacion' ? 'Plan_Aprobacion' : 'Plan_Convalidacion';
+      a.download = `${prefijo}_${cleanName}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -118,6 +125,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               Nuevo Plan
             </span>
           )}
+
+          {/* Badge del Régimen */}
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+              regimen === 'aprobacion'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                : 'bg-blue-50 text-[#0038A8] border-blue-200'
+            }`}
+          >
+            {regimen === 'aprobacion' ? 'Por Aprobación' : 'Por Convalidación'}
+          </span>
 
           {/* Indicador de estado de guardado */}
           {estadoGuardado === 'guardado' && (

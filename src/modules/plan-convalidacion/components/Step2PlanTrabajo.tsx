@@ -23,6 +23,7 @@ import {
   MesConfig,
   MesEstado,
   ObraGeneral,
+  RegimenPlan,
 } from '@/modules/plan-convalidacion/types/convalidacion';
 import {
   formatMonedaArg,
@@ -31,6 +32,9 @@ import {
   calcularAvanceProvisorioConAjuste,
   roundTo,
 } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
+import {
+  calcularAvanceProvisorioAprobacion,
+} from '@/modules/plan-convalidacion/lib/aprobacionEngine';
 import { MemoriaCalculoDrawer } from './MemoriaCalculoDrawer';
 import { ImportarFojasModal } from './ImportarFojasModal';
 
@@ -38,6 +42,7 @@ interface Step2PlanTrabajoProps {
   obra: ObraGeneral;
   resultado: ResultadoConvalidacion;
   mesesConfig: MesConfig[];
+  regimen?: RegimenPlan;
   onActualizarItems: (items: ItemContrato[]) => void;
   onActualizarMesesConfig: (configs: MesConfig[]) => void;
   onAutocompletarSaldos: () => void;
@@ -49,6 +54,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
   obra,
   resultado,
   mesesConfig,
+  regimen = 'convalidacion',
   onActualizarItems,
   onActualizarMesesConfig,
   onAutocompletarSaldos,
@@ -56,6 +62,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
   onIrAPaso3,
 }) => {
   const { columnas, itemsCalculados, curva, hayAdicionales, tieneAlertasFisicas, itemsConExceso } = resultado;
+  const esAprobacion = regimen === 'aprobacion';
 
   // Estado para el modal de importación de Fojas de Medición
   const [modalFojasAbierto, setModalFojasAbierto] = useState(false);
@@ -374,13 +381,13 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                                 Provisorio
                               </span>
                               <span className="text-[9px] text-blue-700 mt-0.5 font-sans font-semibold">
-                                (Avance % s/ Orig.)
+                                {esAprobacion ? '(% s/ Cant. Nueva)' : '(Avance % s/ Orig.)'}
                               </span>
                             </div>
                           )
                         ) : (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                            Cierre Convalidación
+                            {esAprobacion ? 'Cierre Aprobación' : 'Cierre Convalidación'}
                           </span>
                         )}
                       </div>
@@ -388,69 +395,109 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                   );
                 })}
 
-                {/* Columnas fijas derecha: Control Físico con Lenguaje Claro y Tooltips */}
-                <th className="py-2.5 px-2.5 min-w-[125px] text-right bg-slate-100 border-l-2 border-slate-300 text-slate-800">
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>Ejecutado Contrato Orig.</span>
-                    <span
-                      title="Suma de cantidades ejecutadas imputables al contrato básico hasta el mes final"
-                      className="text-slate-400 hover:text-slate-600 cursor-help"
-                    >
-                      ⓘ
-                    </span>
-                  </div>
-                </th>
+                {/* Columnas fijas derecha: Control Físico */}
+                {esAprobacion ? (
+                  <>
+                    <th className="py-2.5 px-2.5 min-w-[120px] text-right bg-blue-50/80 text-blue-950 font-bold border-l-2 border-r border-slate-300">
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Total Ejecutado</span>
+                        <span
+                          title="Total de cantidades físicas acumuladas ejecutadas"
+                          className="text-blue-500 hover:text-blue-700 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-2.5 min-w-[125px] text-center bg-amber-50 text-amber-950 border-r border-slate-300 font-bold">
+                      <div className="flex items-center justify-center space-x-1">
+                        <span>Saldo Pendiente</span>
+                        <span
+                          title="Cantidad física restante para completar la Cantidad Nueva autorizada: Cant. Nueva - Total Ejecutado"
+                          className="text-amber-600 hover:text-amber-800 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-2.5 min-w-[130px] text-center bg-indigo-50/80 text-indigo-950 font-bold">
+                      <div className="flex items-center justify-center space-x-1">
+                        <span>% Avance s/ Cant. Nueva</span>
+                        <span
+                          title="Porcentaje total acumulado ejecutado respecto de la Cantidad Nueva autorizada"
+                          className="text-indigo-500 hover:text-indigo-700 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-2.5 px-2.5 min-w-[125px] text-right bg-slate-100 border-l-2 border-slate-300 text-slate-800">
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Ejecutado Contrato Orig.</span>
+                        <span
+                          title="Suma de cantidades ejecutadas imputables al contrato básico hasta el mes final"
+                          className="text-slate-400 hover:text-slate-600 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
 
-                <th className="py-2.5 px-2.5 min-w-[130px] text-center bg-amber-50 text-amber-950 border-r border-slate-300">
-                  <div className="flex items-center justify-center space-x-1">
-                    <span>Pendiente Contrato Orig.</span>
-                    <span
-                      title="Cantidad restante por certificar del contrato básico con sus disminuciones aplicadas: mín(Cant. Original, Cant. Nueva) - Ejecutado Orig."
-                      className="text-amber-600 hover:text-amber-800 cursor-help"
-                    >
-                      ⓘ
-                    </span>
-                  </div>
-                </th>
+                    <th className="py-2.5 px-2.5 min-w-[130px] text-center bg-amber-50 text-amber-950 border-r border-slate-300">
+                      <div className="flex items-center justify-center space-x-1">
+                        <span>Pendiente Contrato Orig.</span>
+                        <span
+                          title="Cantidad restante por certificar del contrato básico con sus disminuciones aplicadas: mín(Cant. Original, Cant. Nueva) - Ejecutado Orig."
+                          className="text-amber-600 hover:text-amber-800 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
 
-                {hayAdicionales && (
-                  <th className="py-2.5 px-2.5 min-w-[125px] text-center bg-emerald-50 text-emerald-950 border-r border-slate-300">
-                    <div className="flex items-center justify-center space-x-1">
-                      <span>Pendiente Adicionales</span>
-                      <span
-                        title="Cantidad restante por ejecutar correspondiente a ampliaciones o ítems nuevos: máx(0, Cant. Nueva - Cant. Original) - Ejecutado Adic."
-                        className="text-emerald-700 hover:text-emerald-900 cursor-help"
-                      >
-                        ⓘ
-                      </span>
-                    </div>
-                  </th>
+                    {hayAdicionales && (
+                      <th className="py-2.5 px-2.5 min-w-[125px] text-center bg-emerald-50 text-emerald-950 border-r border-slate-300">
+                        <div className="flex items-center justify-center space-x-1">
+                          <span>Pendiente Adicionales</span>
+                          <span
+                            title="Cantidad restante por ejecutar correspondiente a ampliaciones o ítems nuevos: máx(0, Cant. Nueva - Cant. Original) - Ejecutado Adic."
+                            className="text-emerald-700 hover:text-emerald-900 cursor-help"
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                      </th>
+                    )}
+
+                    <th className="py-2.5 px-2.5 min-w-[110px] text-right bg-blue-50/80 text-blue-950 font-bold border-r border-slate-300">
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Total Ejecutado</span>
+                        <span
+                          title="Total de cantidades ejecutadas físicas acumuladas (Contrato Original + Adicionales)"
+                          className="text-blue-500 hover:text-blue-700 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
+
+                    {/* Columna Resumen: % Acumulado s/ Original */}
+                    <th className="py-2.5 px-2.5 min-w-[125px] text-center bg-indigo-50/80 text-indigo-950 font-bold">
+                      <div className="flex items-center justify-center space-x-1">
+                        <span>% Acum. s/ Orig.</span>
+                        <span
+                          title="Porcentaje total acumulado ejecutado respecto de la cantidad original: (Total Ejecutado / Cant. Original) × 100"
+                          className="text-indigo-500 hover:text-indigo-700 cursor-help"
+                        >
+                          ⓘ
+                        </span>
+                      </div>
+                    </th>
+                  </>
                 )}
-
-                <th className="py-2.5 px-2.5 min-w-[110px] text-right bg-blue-50/80 text-blue-950 font-bold border-r border-slate-300">
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>Total Ejecutado</span>
-                    <span
-                      title="Total de cantidades ejecutadas físicas acumuladas (Contrato Original + Adicionales)"
-                      className="text-blue-500 hover:text-blue-700 cursor-help"
-                    >
-                      ⓘ
-                    </span>
-                  </div>
-                </th>
-
-                {/* Columna Resumen: % Acumulado s/ Original */}
-                <th className="py-2.5 px-2.5 min-w-[125px] text-center bg-indigo-50/80 text-indigo-950 font-bold">
-                  <div className="flex items-center justify-center space-x-1">
-                    <span>% Acum. s/ Orig.</span>
-                    <span
-                      title="Porcentaje total acumulado ejecutado respecto de la cantidad original: (Total Ejecutado / Cant. Original) × 100"
-                      className="text-indigo-500 hover:text-indigo-700 cursor-help"
-                    >
-                      ⓘ
-                    </span>
-                  </div>
-                </th>
               </tr>
             </thead>
 
@@ -536,6 +583,107 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
 
                       // CASO 1: Mes Provisorio (Input: % de avance del ítem arriba, Cantidad equivalente abajo)
                       if (esProvisorio) {
+                        if (esAprobacion) {
+                          const cv = it.cantidadNueva || 0;
+                          if (cv <= 0) {
+                            return (
+                              <td
+                                key={col.id}
+                                className="py-1 px-1.5 border-r border-slate-200 text-center bg-slate-50/50"
+                                title="Ítem suprimido (Cant. Nueva = 0): no admite ejecución"
+                              >
+                                <span className="text-slate-400 font-bold font-sans">-</span>
+                              </td>
+                            );
+                          }
+
+                          let sumPrevQ = 0;
+                          for (let m = 1; m < col.mesNumero; m++) {
+                            sumPrevQ += it.avancesPorColumna?.[`mes_${m}`] || 0;
+                          }
+                          const sumPrevPct = (sumPrevQ / cv) * 100;
+                          const saldoRestanteQ = Math.max(0, cv - sumPrevQ);
+                          const porcRestante = Math.max(0, 100 - sumPrevPct);
+
+                          let displayPct = 0;
+                          if (val > 0) {
+                            if (Math.abs((sumPrevQ + val) - cv) <= 0.001) {
+                              displayPct = roundTo(100 - sumPrevPct, 2);
+                            } else {
+                              displayPct = roundTo((val / cv) * 100, 2);
+                            }
+                          }
+
+                          return (
+                            <td
+                              key={col.id}
+                              className="py-1 px-1.5 border-r border-slate-200 text-right"
+                            >
+                              <div className="flex flex-col items-end">
+                                <div className="relative w-full">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={val === 0 ? '' : displayPct}
+                                    onChange={(e) => {
+                                      const p = parseFloat(e.target.value) || 0;
+                                      if (p === 0) {
+                                        handleUpdateAvance(it.id, col.id, 0);
+                                      } else {
+                                        const { cantidad } = calcularAvanceProvisorioAprobacion(
+                                          it,
+                                          col.mesNumero,
+                                          p,
+                                          col.mesNumero === obra.mesFinal - 1
+                                        );
+                                        handleUpdateAvance(it.id, col.id, cantidad);
+                                      }
+                                    }}
+                                    placeholder="0"
+                                    className={`w-full text-right px-1.5 py-0.5 rounded border text-xs font-mono focus:outline-none focus:ring-1 pr-4 ${
+                                      celdaInvalida
+                                        ? 'border-red-500 bg-red-100 text-red-900 font-bold focus:ring-red-500'
+                                        : val > 0
+                                        ? 'border-blue-400 bg-white font-bold text-slate-900'
+                                        : 'border-slate-200 bg-transparent text-slate-400'
+                                    }`}
+                                    title={`Porcentaje de avance sobre Cantidad Nueva (${it.cantidadNueva} ${it.unidad || 'u.'})`}
+                                  />
+                                  <span className="absolute right-1 top-0.5 text-[9px] text-slate-400 pointer-events-none font-bold">
+                                    %
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between w-full mt-0.5 px-0.5 text-[9px] font-mono">
+                                  {val === 0 && saldoRestanteQ > 0.001 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const { cantidad } = calcularAvanceProvisorioAprobacion(
+                                          it,
+                                          col.mesNumero,
+                                          porcRestante,
+                                          col.mesNumero === obra.mesFinal - 1
+                                        );
+                                        handleUpdateAvance(it.id, col.id, cantidad);
+                                      }}
+                                      className="text-[9px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer"
+                                      title={`Completar restante exacto (${porcRestante.toFixed(2)}% = ${saldoRestanteQ.toFixed(2)} ${it.unidad || 'u.'})`}
+                                    >
+                                      Completar {porcRestante.toFixed(2)}%
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-400">
+                                      {val > 0 ? `${val.toFixed(2)} ${it.unidad || 'u.'}` : '0.00 u.'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        // Régimen Convalidación
                         const h = it.cantidadOriginal || 0;
                         const cv = it.cantidadNueva || 0;
 
@@ -633,7 +781,9 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                       }
 
                       // CASO 2: Mes Definitivo o Cierre (Input: Cantidad física arriba, % abajo)
-                      const baseRef = (it.cantidadOriginal || 0) > 0 ? it.cantidadOriginal : (it.cantidadNueva || 0);
+                      const baseRef = esAprobacion
+                        ? (it.cantidadNueva || 0)
+                        : ((it.cantidadOriginal || 0) > 0 ? it.cantidadOriginal : (it.cantidadNueva || 0));
                       const porcEquiv = baseRef > 0 ? (val / baseRef) * 100 : 0;
 
                       return (
@@ -671,7 +821,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                             />
                             <span
                               className="text-[9px] font-mono text-slate-400 tracking-tight mt-0.5 pr-0.5"
-                              title="Porcentaje equivalente sobre cantidad base"
+                              title={esAprobacion ? 'Porcentaje equivalente sobre Cantidad Nueva' : 'Porcentaje equivalente sobre cantidad base'}
                             >
                               {porcEquiv.toFixed(2)}%
                             </span>
@@ -680,119 +830,204 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                       );
                     })}
 
-                    {/* Ejecutado Contrato Orig. */}
-                    <td className="py-1.5 px-2.5 text-right border-l-2 border-slate-300 text-slate-800 font-semibold">
-                      {!isTitle ? calc.cantidadEjecutadaOriginal.toFixed(2) : '-'}
-                    </td>
-
-                    {/* Pendiente Contrato Orig. */}
-                    <td className="py-1.5 px-2.5 text-right border-r border-slate-300">
-                      {!isTitle ? (
-                        calc.cantidadPendienteOriginal < -0.001 ? (
-                          <span
-                            className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-300"
-                            title={`Excede tope de Obra Original en +${calc.excesoOriginalMonto} unidades`}
-                          >
-                            {calc.cantidadPendienteOriginal.toFixed(2)} ⚠
-                          </span>
-                        ) : Math.abs(calc.cantidadPendienteOriginal) <= 0.001 ? (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                            0,00
-                          </span>
-                        ) : (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
-                            {calc.cantidadPendienteOriginal.toFixed(2)}
-                          </span>
-                        )
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-
-                    {/* Pendiente Adicionales */}
-                    {hayAdicionales && (
-                      <td className="py-1.5 px-2.5 text-right border-r border-slate-300">
-                        {!isTitle ? (
-                          calc.cantidadPendienteAdicional < -0.001 ? (
-                            <span
-                              className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-300"
-                              title="Excede cantidad de adicionales autorizada"
-                            >
-                              {calc.cantidadPendienteAdicional.toFixed(2)} ⚠
-                            </span>
-                          ) : Math.abs(calc.cantidadPendienteAdicional) <= 0.001 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                              0,00
-                            </span>
+                    {/* Columnas Derecha de Control Físico */}
+                    {esAprobacion ? (
+                      <>
+                        {/* Total Ejecutado */}
+                        <td className="py-1.5 px-2.5 text-right bg-blue-50/20 border-l-2 border-r border-slate-300">
+                          {!isTitle ? (
+                            calc.excedeTopeTotal ? (
+                              <span
+                                className="font-bold text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-300"
+                                title={`Supera Cant. Nueva (${it.cantidadNueva}) en +${calc.excesoTotalMonto}`}
+                              >
+                                {calc.cantidadEjecutadaTotal.toFixed(2)} ⚠
+                              </span>
+                            ) : (
+                              <span className="font-bold text-slate-900">
+                                {calc.cantidadEjecutadaTotal.toFixed(2)}
+                              </span>
+                            )
                           ) : (
-                            <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
-                              {calc.cantidadPendienteAdicional.toFixed(2)}
-                            </span>
-                          )
-                        ) : (
-                          '-'
+                            '-'
+                          )}
+                        </td>
+
+                        {/* Saldo Pendiente */}
+                        <td className="py-1.5 px-2.5 text-right border-r border-slate-300">
+                          {!isTitle ? (
+                            calc.cantidadPendienteOriginal < -0.001 ? (
+                              <span
+                                className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-300"
+                                title={`Excede Cantidad Nueva en ${Math.abs(calc.cantidadPendienteOriginal).toFixed(2)} unidades`}
+                              >
+                                {calc.cantidadPendienteOriginal.toFixed(2)} ⚠
+                              </span>
+                            ) : Math.abs(calc.cantidadPendienteOriginal) <= 0.001 ? (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                0,00 ✓
+                              </span>
+                            ) : (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
+                                {calc.cantidadPendienteOriginal.toFixed(2)}
+                              </span>
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+
+                        {/* % Avance s/ Cant. Nueva */}
+                        <td className="py-1.5 px-2 text-center bg-indigo-50/20">
+                          {!isTitle ? (
+                            it.cantidadNueva > 0 ? (
+                              calc.porcentajeAcumuladoOriginal > 100.0001 ? (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-900 border border-red-300"
+                                  title={`Supera el 100% de la Cantidad Nueva (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
+                                >
+                                  {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↑
+                                </span>
+                              ) : calc.porcentajeAcumuladoOriginal < 99.9999 ? (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                                  title={`Pendiente: inferior al 100% (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
+                                >
+                                  {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↓
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                  title="Completo: 100,00% de la Cantidad Nueva ejecutada"
+                                >
+                                  100,00% ✓
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-slate-400 font-mono text-[10px]">-</span>
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        {/* Ejecutado Contrato Orig. */}
+                        <td className="py-1.5 px-2.5 text-right border-l-2 border-slate-300 text-slate-800 font-semibold">
+                          {!isTitle ? calc.cantidadEjecutadaOriginal.toFixed(2) : '-'}
+                        </td>
+
+                        {/* Pendiente Contrato Orig. */}
+                        <td className="py-1.5 px-2.5 text-right border-r border-slate-300">
+                          {!isTitle ? (
+                            calc.cantidadPendienteOriginal < -0.001 ? (
+                              <span
+                                className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-300"
+                                title={`Excede tope de Obra Original en +${calc.excesoOriginalMonto} unidades`}
+                              >
+                                {calc.cantidadPendienteOriginal.toFixed(2)} ⚠
+                              </span>
+                            ) : Math.abs(calc.cantidadPendienteOriginal) <= 0.001 ? (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                0,00
+                              </span>
+                            ) : (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
+                                {calc.cantidadPendienteOriginal.toFixed(2)}
+                              </span>
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+
+                        {/* Pendiente Adicionales */}
+                        {hayAdicionales && (
+                          <td className="py-1.5 px-2.5 text-right border-r border-slate-300">
+                            {!isTitle ? (
+                              calc.cantidadPendienteAdicional < -0.001 ? (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-300"
+                                  title="Excede cantidad de adicionales autorizada"
+                                >
+                                  {calc.cantidadPendienteAdicional.toFixed(2)} ⚠
+                                </span>
+                              ) : Math.abs(calc.cantidadPendienteAdicional) <= 0.001 ? (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                  0,00
+                                </span>
+                              ) : (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
+                                  {calc.cantidadPendienteAdicional.toFixed(2)}
+                                </span>
+                              )
+                            ) : (
+                              '-'
+                            )}
+                          </td>
                         )}
-                      </td>
-                    )}
 
-                    {/* Total Ejecutado */}
-                    <td className="py-1.5 px-2.5 text-right bg-blue-50/20 border-r border-slate-300">
-                      {!isTitle ? (
-                        calc.excedeTopeTotal ? (
-                          <span
-                            className="font-bold text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-300"
-                            title={`Supera Cant. Nueva (${it.cantidadNueva}) en +${calc.excesoTotalMonto}`}
-                          >
-                            {calc.cantidadEjecutadaTotal.toFixed(2)} ⚠
-                          </span>
-                        ) : (
-                          <span className="font-bold text-slate-900">
-                            {calc.cantidadEjecutadaTotal.toFixed(2)}
-                          </span>
-                        )
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-
-                    {/* % Acumulado s/ Original */}
-                    <td className="py-1.5 px-2 text-center bg-indigo-50/20">
-                      {!isTitle ? (
-                        it.cantidadOriginal > 0 ? (
-                          calc.porcentajeAcumuladoOriginal > 100.0001 ? (
-                            <span
-                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300"
-                              title={`Ampliación de obra: supera el 100% de la cantidad original (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
-                            >
-                              {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↑
-                            </span>
-                          ) : calc.porcentajeAcumuladoOriginal < 99.9999 ? (
-                            <span
-                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
-                              title={`Pendiente / Disminución: inferior al 100% original (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
-                            >
-                              {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↓
-                            </span>
+                        {/* Total Ejecutado */}
+                        <td className="py-1.5 px-2.5 text-right bg-blue-50/20 border-r border-slate-300">
+                          {!isTitle ? (
+                            calc.excedeTopeTotal ? (
+                              <span
+                                className="font-bold text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-300"
+                                title={`Supera Cant. Nueva (${it.cantidadNueva}) en +${calc.excesoTotalMonto}`}
+                              >
+                                {calc.cantidadEjecutadaTotal.toFixed(2)} ⚠
+                              </span>
+                            ) : (
+                              <span className="font-bold text-slate-900">
+                                {calc.cantidadEjecutadaTotal.toFixed(2)}
+                              </span>
+                            )
                           ) : (
-                            <span
-                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300"
-                              title="Completo: 100,00% de la cantidad básica ejecutada"
-                            >
-                              100,00% ✓
-                            </span>
-                          )
-                        ) : (
-                          <span
-                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
-                            title={`Ítem nuevo (${calc.porcentajeAcumuladoOriginal.toFixed(2)}% s/ Cant. Nueva)`}
-                          >
-                            {calc.porcentajeAcumuladoOriginal.toFixed(2)}% (Nuevo)
-                          </span>
-                        )
-                      ) : (
-                        '-'
-                      )}
-                    </td>
+                            '-'
+                          )}
+                        </td>
+
+                        {/* % Acumulado s/ Original */}
+                        <td className="py-1.5 px-2 text-center bg-indigo-50/20">
+                          {!isTitle ? (
+                            it.cantidadOriginal > 0 ? (
+                              calc.porcentajeAcumuladoOriginal > 100.0001 ? (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300"
+                                  title={`Ampliación de obra: supera el 100% de la cantidad original (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
+                                >
+                                  {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↑
+                                </span>
+                              ) : calc.porcentajeAcumuladoOriginal < 99.9999 ? (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                                  title={`Pendiente / Disminución: inferior al 100% original (${calc.porcentajeAcumuladoOriginal.toFixed(2)}%)`}
+                                >
+                                  {calc.porcentajeAcumuladoOriginal.toFixed(2)}% ↓
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                  title="Completo: 100,00% de la cantidad básica ejecutada"
+                                >
+                                  100,00% ✓
+                                </span>
+                              )
+                            ) : (
+                              <span
+                                className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                                title={`Ítem nuevo (${calc.porcentajeAcumuladoOriginal.toFixed(2)}% s/ Cant. Nueva)`}
+                              >
+                                {calc.porcentajeAcumuladoOriginal.toFixed(2)}% (Nuevo)
+                              </span>
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}
@@ -816,7 +1051,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                     {formatMonedaArg(fc.montoMensual)}
                   </td>
                 ))}
-                <td colSpan={hayAdicionales ? 5 : 4} className="bg-slate-200"></td>
+                <td colSpan={esAprobacion ? 3 : (hayAdicionales ? 5 : 4)} className="bg-slate-200"></td>
               </tr>
 
               {/* Fila 2: Porcentaje Mensual (%) */}
@@ -835,7 +1070,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                     {formatPorcentaje(fc.porcentajeMensual, 4)}
                   </td>
                 ))}
-                <td colSpan={hayAdicionales ? 5 : 4} className="bg-slate-200"></td>
+                <td colSpan={esAprobacion ? 3 : (hayAdicionales ? 5 : 4)} className="bg-slate-200"></td>
               </tr>
 
               {/* Fila 3: Porcentaje Acumulado (%) */}
@@ -854,7 +1089,7 @@ export const Step2PlanTrabajo: React.FC<Step2PlanTrabajoProps> = ({
                     {formatPorcentaje(fc.porcentajeAcumulado, 4)}
                   </td>
                 ))}
-                <td colSpan={hayAdicionales ? 5 : 4} className="bg-slate-300"></td>
+                <td colSpan={esAprobacion ? 3 : (hayAdicionales ? 5 : 4)} className="bg-slate-300"></td>
               </tr>
             </tfoot>
           </table>

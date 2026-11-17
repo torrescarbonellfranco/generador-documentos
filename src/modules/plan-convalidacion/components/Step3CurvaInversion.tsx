@@ -22,7 +22,7 @@ import {
   FileSpreadsheet,
   FileCheck2,
 } from 'lucide-react';
-import { ResultadoConvalidacion, ObraGeneral } from '@/modules/plan-convalidacion/types/convalidacion';
+import { ResultadoConvalidacion, ObraGeneral, RegimenPlan } from '@/modules/plan-convalidacion/types/convalidacion';
 import { formatMonedaArg, formatPorcentaje } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
 import { MemoriaCalculoDrawer } from './MemoriaCalculoDrawer';
 import { PlanTrabajoModeloView } from './PlanTrabajoModeloView';
@@ -30,16 +30,19 @@ import { PlanTrabajoModeloView } from './PlanTrabajoModeloView';
 interface Step3CurvaInversionProps {
   obra: ObraGeneral;
   resultado: ResultadoConvalidacion;
+  regimen?: RegimenPlan;
   onIrAPaso2: () => void;
 }
 
 export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
   obra,
   resultado,
+  regimen = 'convalidacion',
   onIrAPaso2,
 }) => {
   const [vistaActiva, setVistaActiva] = useState<'modelo' | 'curva'>('modelo');
   const { curva, escenario, hayAdicionales, montoObraOriginal, montoObraNuevo } = resultado;
+  const esAprobacion = regimen === 'aprobacion';
 
   // Consolidación temporal del Gráfico: un único período temporal por mes (Mes 1 a Mes {mesFinal})
   // El último mes unifica Obra Original + Adicionales en el Porcentaje Acumulado Final
@@ -223,13 +226,17 @@ export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
 
         <div className="flex items-center space-x-2 text-xs text-slate-600">
           <span className="font-semibold text-slate-900">Régimen:</span>
-          <span>Convalidación (Denominador: {formatMonedaArg(montoObraOriginal)})</span>
+          <span>
+            {esAprobacion
+              ? `Por Aprobación (Denominador Único: ${formatMonedaArg(montoObraNuevo)})`
+              : `Convalidación (Denominador: ${formatMonedaArg(montoObraOriginal)})`}
+          </span>
         </div>
       </div>
 
       {/* VISTA 1: PLAN DE TRABAJO MODELO OFICIAL (FOLIO 15 Y 16) */}
       {vistaActiva === 'modelo' ? (
-        <PlanTrabajoModeloView obra={obra} resultado={resultado} />
+        <PlanTrabajoModeloView obra={obra} resultado={resultado} regimen={regimen} />
       ) : (
         /* VISTA 2: CUADRO DE CURVA Y GRÁFICO S */
         <>
@@ -353,10 +360,14 @@ export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
           <div>
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center">
               <TrendingUp className="w-4 h-4 mr-1.5 text-blue-600" />
-              Curva de Inversión Acumulada por Convalidación (Línea S)
+              {esAprobacion
+                ? 'Curva de Inversión Acumulada por Aprobación (Línea S) — Cierre 100,00%'
+                : 'Curva de Inversión Acumulada por Convalidación (Línea S)'}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Avance Físico Acumulado (%) temporal consolidado (Mes 1 a Mes {obra.mesFinal}), unificando el último período con adicionales incluidos.
+              {esAprobacion
+                ? `Avance Físico Acumulado (%) de Mes 1 a Mes ${obra.mesFinal}, cerrando al 100,0000% sobre el Monto Aprobado Total.`
+                : `Avance Físico Acumulado (%) temporal consolidado (Mes 1 a Mes ${obra.mesFinal}), unificando el último período con adicionales incluidos.`}
             </p>
           </div>
           <div className="flex items-center space-x-3 text-xs">
@@ -365,8 +376,10 @@ export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
               <span className="text-slate-700 font-semibold">Curva de Avance Acumulado</span>
             </div>
             <div className="flex items-center space-x-1.5">
-              <span className="w-4 h-0.5 bg-red-600 border border-red-600 border-dashed" />
-              <span className="text-red-700 font-medium">100,00% Base Original</span>
+              <span className={`w-4 h-0.5 border border-dashed ${esAprobacion ? 'bg-emerald-600 border-emerald-600' : 'bg-red-600 border-red-600'}`} />
+              <span className={esAprobacion ? 'text-emerald-700 font-medium' : 'text-red-700 font-medium'}>
+                {esAprobacion ? '100,00% Monto Aprobado' : '100,00% Base Original'}
+              </span>
             </div>
           </div>
         </div>
@@ -394,13 +407,13 @@ export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
               {/* Línea horizontal punteada de referencia en 100,00% */}
               <ReferenceLine
                 y={100}
-                stroke="#dc2626"
+                stroke={esAprobacion ? '#059669' : '#dc2626'}
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
                 label={{
-                  value: '100,00% (Contrato Básico)',
+                  value: esAprobacion ? '100,00% (Monto Aprobado)' : '100,00% (Contrato Básico)',
                   position: 'insideTopLeft',
-                  fill: '#b91c1c',
+                  fill: esAprobacion ? '#047857' : '#b91c1c',
                   fontSize: 11,
                   fontWeight: 'bold',
                 }}
@@ -426,25 +439,39 @@ export const Step3CurvaInversion: React.FC<Step3CurvaInversionProps> = ({
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-xs text-slate-700 space-y-3">
         <h4 className="font-bold text-slate-900 text-sm flex items-center">
           <Info className="w-4 h-4 mr-1.5 text-blue-600" />
-          Fundamentos del Régimen de Convalidación (Neuquén)
+          {esAprobacion
+            ? 'Fundamentos del Régimen por Aprobación (Municipalidad de Neuquén)'
+            : 'Fundamentos del Régimen de Convalidación (Neuquén)'}
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">1. Denominador Fijo</span>
+            <span className="font-bold text-slate-900 block">
+              {esAprobacion ? '1. Denominador Único (100%)' : '1. Denominador Fijo'}
+            </span>
             <p className="text-slate-600">
-              A diferencia de una aprobación ordinaria, la convalidación <strong>no recalibra el 100%</strong> al nuevo monto contractual. Toda la serie porcentual se divide siempre por el <strong>Monto de Obra Original</strong>.
+              {esAprobacion
+                ? 'El plan por aprobación recalibra toda la curva de inversión sobre el Monto de Obra Nuevo contractual aprobado, garantizando un cierre acumulado exacto al 100,0000%.'
+                : 'A diferencia de una aprobación ordinaria, la convalidación no recalibra el 100% al nuevo monto contractual. Toda la serie porcentual se divide siempre por el Monto de Obra Original.'}
             </p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">2. Cierre Acumulado Flexible</span>
+            <span className="font-bold text-slate-900 block">
+              {esAprobacion ? '2. Cierre Unificado' : '2. Cierre Acumulado Flexible'}
+            </span>
             <p className="text-slate-600">
-              El porcentaje final acumulado puede cerrar por debajo del 100% (ej. 94,45%) si predominan economías/supresiones, o superar el 100% (ej. 104,17%) si existen adicionales netos.
+              {esAprobacion
+                ? 'No se desdobla el último mes en Obra Original y Adicionales; el mes final consolida la totalidad del saldo físico pendiente de ejecución.'
+                : 'El porcentaje final acumulado puede cerrar por debajo del 100% (ej. 94,45%) si predominan economías/supresiones, o superar el 100% (ej. 104,17%) si existen adicionales netos.'}
             </p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-            <span className="font-bold text-slate-900 block">3. Absorción de Redondeos</span>
+            <span className="font-bold text-slate-900 block">
+              {esAprobacion ? '3. Correlatividad y Absorción' : '3. Absorción de Redondeos'}
+            </span>
             <p className="text-slate-600">
-              La columna de cierre de Obra Original absorbe por diferencia aritmética exacta los centavos acumulados de certificados previos definitivos y provisorios para garantizar un balance sin discrepancias.
+              {esAprobacion
+                ? 'Los certificados definitivos fijan importes en $ históricos; los meses provisorios se calculan por avance físico y el mes final absorbe los centavos de redondeo.'
+                : 'La columna de cierre de Obra Original absorbe por diferencia aritmética exacta los centavos acumulados de certificados previos definitivos y provisorios para garantizar un balance sin discrepancias.'}
             </p>
           </div>
         </div>

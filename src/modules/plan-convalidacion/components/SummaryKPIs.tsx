@@ -11,44 +11,54 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
-import { ObraGeneral, ResultadoConvalidacion } from '@/modules/plan-convalidacion/types/convalidacion';
+import { ObraGeneral, ResultadoConvalidacion, RegimenPlan } from '@/modules/plan-convalidacion/types/convalidacion';
 import { formatMonedaArg, formatPorcentaje } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
 
 interface SummaryKPIsProps {
   obra: ObraGeneral;
   resultado: ResultadoConvalidacion;
+  regimen?: RegimenPlan;
   onActualizarObra: (patch: Partial<ObraGeneral>) => void;
 }
 
 export const SummaryKPIs: React.FC<SummaryKPIsProps> = ({
   obra,
   resultado,
+  regimen = 'convalidacion',
   onActualizarObra,
 }) => {
   const esAumento = resultado.diferenciaNetaMonto > 0;
   const esDisminucion = resultado.diferenciaNetaMonto < 0;
+  const esAprobacion = regimen === 'aprobacion';
 
   // Badge config según Escenario
-  const badgeConfig = {
-    A_SOLO_DISMINUCION: {
-      label: 'Escenario A: Solo Disminución de Obra',
-      sublabel: 'Columna única al cierre (sin desdoblamiento). Acumula Monto Nuevo.',
-      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-      dotClass: 'bg-emerald-500',
-    },
-    B_SOLO_ADICIONALES: {
-      label: 'Escenario B: Solo Adicionales (100% Orig.)',
-      sublabel: 'Desdoble en Mes Final: Obra Orig. cierra exacto al 100%, y Adicionales acumula saldo.',
-      badgeClass: 'bg-blue-50 text-blue-800 border-blue-300',
-      dotClass: 'bg-blue-500',
-    },
-    C_MIXTO: {
-      label: 'Escenario C: Mixto (Disminución + Adicionales)',
-      sublabel: 'Desdoble en Mes Final: Obra Orig. computa SUMAPRODUCTO de original ejecutada, y Adicionales el saldo.',
-      badgeClass: 'bg-purple-50 text-purple-900 border-purple-300',
-      dotClass: 'bg-purple-600',
-    },
-  }[resultado.escenario];
+  const badgeConfig = esAprobacion
+    ? {
+        label: 'Régimen: Por Aprobación (100% Total)',
+        sublabel: 'Curva recalibrada al 100,00% sobre Monto Aprobado Total. Cierre unificado.',
+        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+        dotClass: 'bg-emerald-500',
+      }
+    : {
+        A_SOLO_DISMINUCION: {
+          label: 'Escenario A: Solo Disminución de Obra',
+          sublabel: 'Columna única al cierre (sin desdoblamiento). Acumula Monto Nuevo.',
+          badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+          dotClass: 'bg-emerald-500',
+        },
+        B_SOLO_ADICIONALES: {
+          label: 'Escenario B: Solo Adicionales (100% Orig.)',
+          sublabel: 'Desdoble en Mes Final: Obra Orig. cierra exacto al 100%, y Adicionales acumula saldo.',
+          badgeClass: 'bg-blue-50 text-blue-800 border-blue-300',
+          dotClass: 'bg-blue-500',
+        },
+        C_MIXTO: {
+          label: 'Escenario C: Mixto (Disminución + Adicionales)',
+          sublabel: 'Desdoble en Mes Final: Obra Orig. computa SUMAPRODUCTO de original ejecutada, y Adicionales el saldo.',
+          badgeClass: 'bg-purple-50 text-purple-900 border-purple-300',
+          dotClass: 'bg-purple-600',
+        },
+      }[resultado.escenario];
 
   return (
     <div className="bg-white border-b border-slate-200 shadow-xs">
@@ -60,30 +70,34 @@ export const SummaryKPIs: React.FC<SummaryKPIsProps> = ({
             <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
               <span>Monto Contrato Original</span>
               <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                Denominador Fijo
+                {esAprobacion ? 'Base Contractual' : 'Denominador Fijo'}
               </span>
             </div>
             <div className="mt-1 text-base sm:text-lg font-bold text-slate-900 tracking-tight">
               {formatMonedaArg(resultado.montoObraOriginal)}
             </div>
             <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-              Base 100,0000%
+              {esAprobacion ? 'Contrato Básico' : 'Base 100,0000%'}
             </div>
           </div>
 
-          {/* KPI 2: Monto de Obra Nuevo / Convalidado */}
+          {/* KPI 2: Monto Aprobado Total (Denominador Único en Aprobación) */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-              <span>Monto Convalidado Total</span>
-              <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-mono">
-                Convalidación
+              <span>{esAprobacion ? 'Monto Aprobado Total' : 'Monto Convalidado Total'}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                esAprobacion ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {esAprobacion ? 'Denominador Único' : 'Convalidación'}
               </span>
             </div>
             <div className="mt-1 text-base sm:text-lg font-bold text-slate-900 tracking-tight">
               {formatMonedaArg(resultado.montoObraNuevo)}
             </div>
             <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-              Cierre acumulado: {formatPorcentaje(resultado.montoObraOriginal > 0 ? resultado.montoObraNuevo / resultado.montoObraOriginal : 0, 4)}
+              {esAprobacion
+                ? 'Base 100,0000%'
+                : `Cierre acumulado: ${formatPorcentaje(resultado.montoObraOriginal > 0 ? resultado.montoObraNuevo / resultado.montoObraOriginal : 0, 4)}`}
             </div>
           </div>
 

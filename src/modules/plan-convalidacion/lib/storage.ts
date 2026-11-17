@@ -4,8 +4,9 @@ import {
   ObraGeneral,
   MesConfig,
 } from '@/modules/plan-convalidacion/types/convalidacion';
-import { demoEscenarioC } from '@/modules/plan-convalidacion/lib/demoData';
+import { demoEscenarioC, demoAprobacion8480 } from '@/modules/plan-convalidacion/lib/demoData';
 import { calcularConvalidacion } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
+import { calcularAprobacion } from '@/modules/plan-convalidacion/lib/aprobacionEngine';
 
 const STORAGE_KEY = 'sigac_planes_convalidacion';
 
@@ -96,11 +97,18 @@ export function guardarPlan(plan: PlanConvalidacionState): void {
 
     if (plan.items && plan.items.length > 0) {
       try {
-        const res = calcularConvalidacion(
-          plan.items,
-          plan.mesesConfig || [],
-          plan.obra?.mesFinal || 6
-        );
+        const esAprob = plan.regimen === 'aprobacion';
+        const res = esAprob
+          ? calcularAprobacion(
+              plan.items,
+              plan.mesesConfig || [],
+              plan.obra?.mesFinal || 6
+            )
+          : calcularConvalidacion(
+              plan.items,
+              plan.mesesConfig || [],
+              plan.obra?.mesFinal || 6
+            );
         montoOrig = res.montoObraOriginal;
         montoNuev = res.montoObraNuevo;
         if (res.curva && res.curva.length > 0) {
@@ -256,6 +264,28 @@ export function crearPlanDesdeDemoOficial(nombreDemo?: string): PlanConvalidacio
     obra: JSON.parse(JSON.stringify(demoEscenarioC.obra)),
     items: JSON.parse(JSON.stringify(demoEscenarioC.items)),
     mesesConfig: JSON.parse(JSON.stringify(demoEscenarioC.mesesConfig)),
+    reconciliacion: undefined,
+    pasoActivo: 1,
+  };
+}
+
+/**
+ * Crea un plan preconfigurado con el caso oficial de Neuquén por Aprobación (OE-8480-M-2025).
+ */
+export function crearPlanDesdeDemoAprobacion(nombreDemo?: string): PlanConvalidacionState {
+  const id = `plan-${Date.now()}-demo-aprobacion`;
+  const ahora = new Date().toISOString();
+
+  return {
+    id,
+    titulo: nombreDemo || demoAprobacion8480.nombre,
+    regimen: 'aprobacion',
+    fechaCreacion: ahora,
+    ultimaModificacion: ahora,
+    version: 1,
+    obra: JSON.parse(JSON.stringify(demoAprobacion8480.obra)),
+    items: JSON.parse(JSON.stringify(demoAprobacion8480.items)),
+    mesesConfig: JSON.parse(JSON.stringify(demoAprobacion8480.mesesConfig)),
     reconciliacion: undefined,
     pasoActivo: 1,
   };

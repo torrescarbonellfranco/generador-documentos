@@ -4,6 +4,12 @@ import {
   calcularAvanceProvisorioConAjuste,
   roundTo,
 } from './convalidacionEngine';
+import {
+  calcularAprobacion,
+  autocompletarSaldosAprobacion,
+  calcularAvanceProvisorioAprobacion,
+} from './aprobacionEngine';
+import { exportarExcelOficialAprobacion } from './aprobacionExcelExport';
 import * as XLSX from 'xlsx';
 import {
   parsearFojaMedicion,
@@ -17,6 +23,7 @@ import {
   demoEscenarioA,
   demoEscenarioB,
   demoEscenarioC,
+  demoAprobacion8480,
 } from './demoData';
 
 console.log('=== INICIANDO SUITE DE PRUEBAS DE CONVALIDACIÓN (NEUQUÉN) ===\n');
@@ -630,7 +637,89 @@ async function testExcel3Hojas() {
   console.log('✓ Importador de Fojas de Medición y cruce verificado exitosamente.\n');
 }
 
-testExcel3Hojas().then(() => {
+// TEST 11: Régimen Por Aprobación (Motor de Cálculo OE-8480-M-2025)
+{
+  console.log('TEST 11: Verificando Régimen Por Aprobación (Caso OE-8480)...');
+  const resAp = calcularAprobacion(
+    demoAprobacion8480.items,
+    demoAprobacion8480.mesesConfig,
+    demoAprobacion8480.obra.mesFinal
+  );
+
+  // 1. Columnas continuas sin desdoblamiento en el cierre
+  console.assert(
+    resAp.columnas.length === 6,
+    `Deben ser exactamente 6 columnas continuas, obtenido: ${resAp.columnas.length}`
+  );
+  console.assert(
+    resAp.columnas[5].id === 'mes_6',
+    'La columna final debe ser mes_6 sin desdoblamiento'
+  );
+
+  // 2. Denominador Único en Monto Obra Nuevo
+  console.assert(
+    resAp.montoObraNuevo > 0,
+    'Monto Obra Nuevo debe ser mayor a cero'
+  );
+  const filaFinal = resAp.curva[resAp.curva.length - 1];
+  console.assert(
+    filaFinal.porcentajeAcumulado === 1.0,
+    `La curva debe cerrar exactamente al 100,0000%, obtenido: ${filaFinal.porcentajeAcumulado}`
+  );
+  console.assert(
+    filaFinal.montoAcumulado === resAp.montoObraNuevo,
+    `El monto acumulado debe cerrar exacto en Monto Nuevo ($${resAp.montoObraNuevo}), obtenido: $${filaFinal.montoAcumulado}`
+  );
+
+  // 3. Meses definitivos toman montos de certificados
+  console.assert(
+    resAp.curva[0].montoMensual === 12500000,
+    'Mes 1 definitivo debe ser $12.500.000'
+  );
+  console.assert(
+    resAp.curva[1].montoMensual === 24800000,
+    'Mes 2 definitivo debe ser $24.800.000'
+  );
+  console.assert(
+    resAp.curva[2].montoMensual === 38600000,
+    'Mes 3 definitivo debe ser $38.600.000'
+  );
+
+  // 4. Autocompletar saldos en mes final
+  const itemsAutocompletados = autocompletarSaldosAprobacion(
+    demoAprobacion8480.items,
+    demoAprobacion8480.obra.mesFinal
+  );
+  const resApAuto = calcularAprobacion(
+    itemsAutocompletados,
+    demoAprobacion8480.mesesConfig,
+    demoAprobacion8480.obra.mesFinal
+  );
+  console.assert(
+    resApAuto.saldosFisicosCerrados,
+    'Todos los saldos físicos deben cerrar en cero tras autocompletar'
+  );
+  console.log('✓ Régimen Por Aprobación verificado exitosamente.\n');
+}
+
+// TEST 12: Exportador Oficial Excel Por Aprobación (3 pestañas con fórmulas vivas)
+async function testExcelAprobacion3Hojas() {
+  console.log('TEST 12: Verificando Exportador Oficial Excel Por Aprobación (3 pestañas)...');
+  const resAp = calcularAprobacion(
+    demoAprobacion8480.items,
+    demoAprobacion8480.mesesConfig,
+    demoAprobacion8480.obra.mesFinal
+  );
+  const blob = await exportarExcelOficialAprobacion(
+    demoAprobacion8480.obra,
+    resAp,
+    demoAprobacion8480.mesesConfig
+  );
+  console.assert(blob.size > 2000, 'El archivo Excel generado no debe estar vacío');
+  console.log(`✓ Exportador Por Aprobación verificado: archivo Excel generado (${blob.size} bytes).\n`);
+}
+
+Promise.all([testExcel3Hojas(), testExcelAprobacion3Hojas()]).then(() => {
   console.log('TODAS LAS PRUEBAS MATEMÁTICAS Y DE NEGOCIO PASARON EXITOSAMENTE!');
 }).catch((err) => {
   console.error('Error en pruebas:', err);

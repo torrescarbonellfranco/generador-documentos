@@ -30,6 +30,7 @@ import {
   eliminarPlan,
   duplicarPlan,
   crearPlanDesdeDemoOficial,
+  crearPlanDesdeDemoAprobacion,
   guardarPlan,
 } from '@/modules/plan-convalidacion';
 
@@ -117,6 +118,11 @@ export default function VerificacionPlanHubPage() {
     router.push(`/plan-convalidacion/${nuevoId}?regimen=convalidacion&nuevo=true`);
   };
 
+  const handleIngresarAprobacion = () => {
+    const nuevoId = `plan-${Date.now()}`;
+    router.push(`/plan-convalidacion/${nuevoId}?regimen=aprobacion&nuevo=true`);
+  };
+
   const handleCargarDemoOficial = (e: React.MouseEvent) => {
     e.stopPropagation();
     const demoPlan = crearPlanDesdeDemoOficial();
@@ -124,6 +130,14 @@ export default function VerificacionPlanHubPage() {
     guardarPlan(demoPlan);
     recargarPlanes();
     mostrarMensaje('Plan demo oficial de Neuquén (Convalidación) cargado con éxito.');
+  };
+
+  const handleCargarDemoAprobacion = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const demoPlan = crearPlanDesdeDemoAprobacion();
+    guardarPlan(demoPlan);
+    recargarPlanes();
+    mostrarMensaje('Plan demo oficial de Neuquén (Por Aprobación OE-8480) cargado con éxito.');
   };
 
   const handleDuplicar = (id: string, e: React.MouseEvent) => {
@@ -318,49 +332,49 @@ export default function VerificacionPlanHubPage() {
               </div>
             </div>
 
-            {/* Tarjeta 2 — Por Aprobación (En Desarrollo) */}
-            <div className="relative bg-slate-50/75 rounded-3xl border-2 border-slate-200 p-6 sm:p-7 flex flex-col justify-between shadow-xs cursor-not-allowed opacity-80">
+            {/* Tarjeta 2 — Por Aprobación (Activo) */}
+            <div className="group relative bg-white rounded-3xl border-2 border-emerald-200/90 hover:border-emerald-600 p-6 sm:p-7 flex flex-col justify-between shadow-xs hover:shadow-xl hover:shadow-emerald-900/10 transition-all">
               <div>
                 {/* Badge superior */}
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center shadow-inner">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-[#0038A8] text-white flex items-center justify-center shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform">
                     <Calculator className="w-6 h-6" />
                   </div>
-                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 shadow-2xs">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" />
-                    En Desarrollo
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Disponible
                   </span>
                 </div>
 
                 <div className="mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Submódulo Normativo
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                    Submódulo Activo
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-slate-600">
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#0B1938] group-hover:text-emerald-700 transition-colors">
                     Por Aprobación
                   </h3>
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
-                  Plan de trabajo y curva de inversión con recalibración al 100% sobre el monto contractual modificado aprobado.
+                  Plan de trabajo y curva de inversión con recalibración al 100% sobre el monto contractual modificado aprobado como denominador único.
                 </p>
 
                 {/* Viñetas descriptivas */}
-                <div className="space-y-2 pt-4 border-t border-slate-200 text-xs text-slate-500">
+                <div className="space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-600">
                   <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <span>
                       <strong>Recalibración integral al 100%</strong> sobre el nuevo monto contractual.
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <span>
                       <strong>Proyección de flujos futuros</strong> para trámites en tiempo y forma.
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <span>
                       <strong>Base de datos unificada</strong> con el repositorio general de SIGAC.
                     </span>
@@ -368,15 +382,25 @@ export default function VerificacionPlanHubPage() {
                 </div>
               </div>
 
-              {/* Estado visual bloqueado / deshabilitado */}
-              <div className="mt-6 pt-4 border-t border-slate-200">
-                <div
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-200/80 text-slate-500 text-xs font-semibold flex items-center justify-center gap-2 select-none"
-                  title="Módulo en fase de especificación normativa"
+              {/* Botones de acción */}
+              <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2.5 justify-between">
+                <button
+                  type="button"
+                  onClick={handleIngresarAprobacion}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:shadow-md"
                 >
-                  <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Próximamente (En Desarrollo)</span>
-                </div>
+                  <span>Ingresar a Aprobación &rarr;</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCargarDemoAprobacion}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold transition-colors cursor-pointer"
+                  title="Cargar el caso oficial de Neuquén Capital por Aprobación (OE-8480-M-2025)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Cargar Ejemplo (8480)</span>
+                </button>
               </div>
             </div>
           </div>

@@ -26,12 +26,17 @@ import {
   ajustarCantidadesAlTope,
 } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
 import {
+  calcularAprobacion,
+  autocompletarSaldosAprobacion,
+} from '@/modules/plan-convalidacion/lib/aprobacionEngine';
+import {
   ItemContrato,
   ObraGeneral,
   MesConfig,
   ReconciliacionCuadro,
   PlanConvalidacionState,
   PlanConvalidacionMetadata,
+  RegimenPlan,
 } from '@/modules/plan-convalidacion/types/convalidacion';
 
 export interface PlanConvalidacionAppProps {
@@ -69,8 +74,11 @@ export function PlanConvalidacionApp({
         mesesConfig: initialState.mesesConfig,
         reconciliacion: initialState.reconciliacion,
         pasoActivo: initialState.pasoActivo || 1,
+        regimen: initialState.regimen || 'convalidacion',
       };
     }
+
+    const reg = prefillMetadata?.regimen || 'convalidacion';
 
     if (prefillMetadata) {
       const expStr =
@@ -103,6 +111,7 @@ export function PlanConvalidacionApp({
         mesesConfig: mesesPrefill,
         reconciliacion: undefined,
         pasoActivo: 1 as 1 | 2 | 3,
+        regimen: reg,
       };
     }
 
@@ -113,8 +122,11 @@ export function PlanConvalidacionApp({
       mesesConfig: demoEscenarioC.mesesConfig,
       reconciliacion: undefined,
       pasoActivo: 1 as 1 | 2 | 3,
+      regimen: 'convalidacion' as RegimenPlan,
     };
   }, [initialState, prefillMetadata]);
+
+  const regimen: RegimenPlan = initialData.regimen;
 
   // Estado del proyecto
   const [obra, setObra] = useState<ObraGeneral>(initialData.obra);
@@ -142,7 +154,8 @@ export function PlanConvalidacionApp({
       onStateChange({
         id: initialState?.id || planIdRef.current,
         expedienteId: prefillMetadata?.expedienteId || initialState?.expedienteId || obra.expediente,
-        titulo: initialState?.titulo || obra.nombre || 'Plan de Convalidación',
+        titulo: initialState?.titulo || obra.nombre || (regimen === 'aprobacion' ? 'Plan por Aprobación' : 'Plan de Convalidación'),
+        regimen,
         fechaCreacion: initialState?.fechaCreacion || fechaCreacionRef.current,
         ultimaModificacion: new Date().toISOString(),
         version: initialState?.version || 1,
@@ -153,12 +166,15 @@ export function PlanConvalidacionApp({
         pasoActivo,
       });
     }
-  }, [obra, items, mesesConfig, reconciliacion, pasoActivo, onStateChange, initialState, prefillMetadata]);
+  }, [obra, items, mesesConfig, reconciliacion, pasoActivo, onStateChange, initialState, prefillMetadata, regimen]);
 
-  // Cálculo de convalidación en tiempo real (puro y memorizado)
+  // Cálculo en tiempo real según el régimen activo
   const resultado = useMemo(() => {
+    if (regimen === 'aprobacion') {
+      return calcularAprobacion(items, mesesConfig, obra.mesFinal);
+    }
     return calcularConvalidacion(items, mesesConfig, obra.mesFinal);
-  }, [items, mesesConfig, obra.mesFinal]);
+  }, [regimen, items, mesesConfig, obra.mesFinal]);
 
   // Manejo de carga de proyectos demo
   const handleCargarDemo = (demo: DemoProject) => {
@@ -202,6 +218,11 @@ export function PlanConvalidacionApp({
 
   // Autocompletar saldos pendientes
   const handleAutocompletarSaldos = () => {
+    if (regimen === 'aprobacion') {
+      const nuevosItems = autocompletarSaldosAprobacion(items, obra.mesFinal);
+      setItems(nuevosItems);
+      return;
+    }
     const nuevosItems = autocompletarSaldosCierre(
       items,
       obra.mesFinal,
@@ -240,6 +261,7 @@ export function PlanConvalidacionApp({
         obra={obra}
         resultado={resultado}
         mesesConfig={mesesConfig}
+        regimen={regimen}
         onCargarDemo={handleCargarDemo}
         onResetear={handleResetear}
         onAbrirVerificacion={() => setModalVerifAbierto(true)}
@@ -254,6 +276,7 @@ export function PlanConvalidacionApp({
       <SummaryKPIs
         obra={obra}
         resultado={resultado}
+        regimen={regimen}
         onActualizarObra={(patch) => setObra((prev) => ({ ...prev, ...patch }))}
       />
 
@@ -335,6 +358,7 @@ export function PlanConvalidacionApp({
             obra={obra}
             resultado={resultado}
             mesesConfig={mesesConfig}
+            regimen={regimen}
             onActualizarItems={setItems}
             onActualizarMesesConfig={setMesesConfig}
             onAutocompletarSaldos={handleAutocompletarSaldos}
@@ -347,6 +371,7 @@ export function PlanConvalidacionApp({
           <Step3CurvaInversion
             obra={obra}
             resultado={resultado}
+            regimen={regimen}
             onIrAPaso2={() => setPasoActivo(2)}
           />
         )}

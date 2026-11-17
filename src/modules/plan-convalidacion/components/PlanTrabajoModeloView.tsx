@@ -14,19 +14,23 @@ import {
   ObraGeneral,
   ItemCalculado,
   ColumnaCierreInfo,
+  RegimenPlan,
 } from '@/modules/plan-convalidacion/types/convalidacion';
 import { formatMonedaArg, formatPorcentaje } from '@/modules/plan-convalidacion/lib/convalidacionEngine';
 
 interface PlanTrabajoModeloViewProps {
   obra: ObraGeneral;
   resultado: ResultadoConvalidacion;
+  regimen?: RegimenPlan;
 }
 
 export const PlanTrabajoModeloView: React.FC<PlanTrabajoModeloViewProps> = ({
   obra,
   resultado,
+  regimen = 'convalidacion',
 }) => {
   const { itemsCalculados, columnas, curva, montoObraOriginal, montoObraNuevo } = resultado;
+  const esAprobacion = regimen === 'aprobacion';
 
   const handleImprimir = () => {
     window.print();
@@ -34,10 +38,10 @@ export const PlanTrabajoModeloView: React.FC<PlanTrabajoModeloViewProps> = ({
 
   /**
    * Calcula el porcentaje de avance físico de un ítem en una columna específica:
-   * - Ítems básicos: Cantidad / CantidadOriginal (sobre el costo básico)
-   * - Ítems nuevos (Cant. Orig = 0):
-   *   - En columnas previas: '-'
-   *   - En columna de adicionales: Cantidad / CantidadNueva (100% si se ejecuta completa)
+   * - En Aprobación: siempre sobre Cantidad Nueva (CV_i)
+   * - En Convalidación:
+   *   - Ítems básicos: Cantidad / CantidadOriginal (sobre el costo básico)
+   *   - Ítems nuevos (Cant. Orig = 0): Cantidad / CantidadNueva en columna de adicionales
    */
   const calcularPorcentajeItem = (calc: ItemCalculado, col: ColumnaCierreInfo): string => {
     if (calc.esTitulo) return '';
@@ -45,10 +49,17 @@ export const PlanTrabajoModeloView: React.FC<PlanTrabajoModeloViewProps> = ({
     const cantMes = calc.item.avancesPorColumna?.[col.id] || 0;
     if (cantMes === 0) return '-';
 
-    const cantOrig = calc.item.cantidadOriginal || 0;
     const cantNueva = calc.item.cantidadNueva || 0;
 
-    // Ítem nuevo (H_i === 0)
+    if (esAprobacion) {
+      if (cantNueva <= 0) return '-';
+      const porc = (cantMes / cantNueva) * 100;
+      return `${porc.toFixed(2)}%`;
+    }
+
+    const cantOrig = calc.item.cantidadOriginal || 0;
+
+    // Ítem nuevo (H_i === 0) en Convalidación
     if (cantOrig === 0) {
       if (col.esAdicional && cantNueva > 0) {
         const porcNuevo = (cantMes / cantNueva) * 100;
@@ -104,24 +115,37 @@ export const PlanTrabajoModeloView: React.FC<PlanTrabajoModeloViewProps> = ({
                   MUNICIPALIDAD DE NEUQUÉN — ÁREA DE ALTERACIONES CONTRACTUALES
                 </h1>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-blue-900 mt-0.5">
-                  Plan de Trabajo Modelo por Convalidación Contractual
+                  {esAprobacion
+                    ? 'Plan de Trabajo y Curva de Inversión por Aprobación Contractual'
+                    : 'Plan de Trabajo Modelo por Convalidación Contractual'}
                 </h2>
               </div>
             </div>
 
             <div className="text-right">
-              <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-mono font-bold uppercase">
-                Régimen: Convalidación ({resultado.escenario === 'C_MIXTO' ? 'Escenario C - Mixto' : resultado.escenario === 'B_SOLO_ADICIONALES' ? 'Escenario B - Adicionales' : 'Escenario A - Disminución'})
+              <span className={`inline-block px-2.5 py-1 rounded border text-[10px] font-mono font-bold uppercase ${
+                esAprobacion
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-slate-100 text-slate-800 border-slate-300'
+              }`}>
+                {esAprobacion
+                  ? 'Régimen: Por Aprobación (100% Total)'
+                  : `Régimen: Convalidación (${resultado.escenario === 'C_MIXTO' ? 'Escenario C - Mixto' : resultado.escenario === 'B_SOLO_ADICIONALES' ? 'Escenario B - Adicionales' : 'Escenario A - Disminución'})`}
               </span>
               <div className="text-[11px] text-slate-500 font-medium mt-1">
-                Base Denominador: <strong className="text-slate-800">Monto Contrato Original</strong>
+                Base Denominador:{' '}
+                <strong className="text-slate-800">
+                  {esAprobacion ? 'Monto Aprobado Total (100,00%)' : 'Monto Contrato Original'}
+                </strong>
               </div>
             </div>
           </div>
 
           <div className="mt-4 text-center border-t border-slate-200 pt-3">
             <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-slate-900">
-              Plan de Trabajo y Curva de Inversión por Convalidación
+              {esAprobacion
+                ? 'Plan de Trabajo y Curva de Inversión por Aprobación'
+                : 'Plan de Trabajo y Curva de Inversión por Convalidación'}
             </h2>
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-widest mt-0.5">
               Modelo Oficial de Presentación — Avances Físicos Porcentuales
@@ -282,13 +306,17 @@ export const PlanTrabajoModeloView: React.FC<PlanTrabajoModeloViewProps> = ({
                   {formatMonedaArg(montoObraOriginal)}
                 </td>
                 <td className="py-2 px-1.5 text-right border-r border-slate-300 text-blue-900">
-                  100,00%
+                  {esAprobacion
+                    ? (montoObraNuevo > 0 ? formatPorcentaje(montoObraOriginal / montoObraNuevo, 2) : '100,00%')
+                    : '100,00%'}
                 </td>
                 <td className="py-2 px-2.5 text-right border-r border-slate-300 text-emerald-950">
                   {formatMonedaArg(montoObraNuevo)}
                 </td>
                 <td className="py-2 px-1.5 text-right border-r-2 border-slate-400 text-emerald-950">
-                  {formatPorcentaje(montoObraOriginal > 0 ? montoObraNuevo / montoObraOriginal : 0, 2)}
+                  {esAprobacion
+                    ? '100,00%'
+                    : formatPorcentaje(montoObraOriginal > 0 ? montoObraNuevo / montoObraOriginal : 0, 2)}
                 </td>
                 {columnas.map((col) => (
                   <td key={col.id} className="py-2 px-2 text-center border-r border-slate-200 text-slate-400">
